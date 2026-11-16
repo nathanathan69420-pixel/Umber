@@ -2578,66 +2578,28 @@ do
 		end
 	})
 	PlayerGroup:AddDivider()
-	PlayerGroup:AddToggle("PlayerInfection", { Text = "Infection", Tooltip = "Shows infection percent.", Default = true,
-		["Callback"] = function(Value)
-			PlayerConfig.Infection = Value
-			if Value then
-				EnsureEnabled("PlayerESP")
+	local PlayerStatuses = {
+		{ Key = "Infection", Text = "Infection", Tooltip = "Shows infection percent.", Default = true },
+		{ Key = "Grabbed", Text = "Grabbed", Tooltip = "Flags players a zombie is holding.", Default = true },
+		{ Key = "Pinned", Text = "Pinned", Tooltip = "Shows what pinned them.", Default = true },
+		{ Key = "Burning", Text = "Burning", Tooltip = "Flags players on fire.", Default = false },
+		{ Key = "BrokenLegs", Text = "Broken Legs", Tooltip = "Flags players with broken legs.", Default = false },
+	}
+
+	for _, Status in PlayerStatuses do
+		PlayerGroup:AddToggle("Player" .. Status.Key, { Text = Status.Text, Tooltip = Status.Tooltip, Default = Status.Default,
+			["Callback"] = function (Value)
+				PlayerConfig[Status.Key] = Value
+				if Value then
+					EnsureEnabled("PlayerESP")
+				end
 			end
-		end
-	}):AddColorPicker("PlayerInfectionColor", { Default = Color3.fromRGB(190, 70, 70), Title = "Infection Color",
-		["Callback"] = function(Value)
-			PlayerConfig.InfectionColor = Value
-		end
-	})
-	PlayerGroup:AddToggle("PlayerGrabbed", { Text = "Grabbed", Tooltip = "Flags players a zombie is holding.", Default = true,
-		["Callback"] = function(Value)
-			PlayerConfig.Grabbed = Value
-			if Value then
-				EnsureEnabled("PlayerESP")
+		}):AddColorPicker("Player" .. Status.Key .. "Color", { Default = PlayerConfig[Status.Key .. "Color"], Title = Status.Text .. " Color",
+			["Callback"] = function (Value)
+				PlayerConfig[Status.Key .. "Color"] = Value
 			end
-		end
-	}):AddColorPicker("PlayerGrabbedColor", { Default = Color3.fromRGB(255, 70, 70), Title = "Grabbed Color",
-		["Callback"] = function(Value)
-			PlayerConfig.GrabbedColor = Value
-		end
-	})
-	PlayerGroup:AddToggle("PlayerPinned", { Text = "Pinned", Tooltip = "Shows what pinned them.", Default = true,
-		["Callback"] = function(Value)
-			PlayerConfig.Pinned = Value
-			if Value then
-				EnsureEnabled("PlayerESP")
-			end
-		end
-	}):AddColorPicker("PlayerPinnedColor", { Default = Color3.fromRGB(255, 170, 60), Title = "Pinned Color",
-		["Callback"] = function(Value)
-			PlayerConfig.PinnedColor = Value
-		end
-	})
-	PlayerGroup:AddToggle("PlayerBurning", { Text = "Burning", Tooltip = "Flags players on fire.", Default = false,
-		["Callback"] = function(Value)
-			PlayerConfig.Burning = Value
-			if Value then
-				EnsureEnabled("PlayerESP")
-			end
-		end
-	}):AddColorPicker("PlayerBurningColor", { Default = Color3.fromRGB(255, 130, 40), Title = "Burning Color",
-		["Callback"] = function(Value)
-			PlayerConfig.BurningColor = Value
-		end
-	})
-	PlayerGroup:AddToggle("PlayerBrokenLegs", { Text = "Broken Legs", Tooltip = "Flags players with broken legs.", Default = false,
-		["Callback"] = function(Value)
-			PlayerConfig.BrokenLegs = Value
-			if Value then
-				EnsureEnabled("PlayerESP")
-			end
-		end
-	}):AddColorPicker("PlayerBrokenLegsColor", { Default = Color3.fromRGB(180, 180, 255), Title = "Broken Legs Color",
-		["Callback"] = function(Value)
-			PlayerConfig.BrokenLegsColor = Value
-		end
-	})
+		})
+	end
 end
 do
 	local ThrowableGroup = Pace(Tabs.Visuals:AddGroupbox({ Name = "Throwables", Side = "Right", IconName = "bomb" }))
