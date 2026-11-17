@@ -1,3 +1,4 @@
+local _rl1 = {}
 local _rl0 = {}
 local Players = game.Players
 do
@@ -95,8 +96,8 @@ do
 	end
 end
 do
-	local _sc3_s1 = not Sources.Library or not Sources.ThemeManager
-	if _sc3_s1 or not Sources.SaveManager then
+	local _sc_s1 = not Sources.Library or not Sources.ThemeManager
+	if _sc_s1 or not Sources.SaveManager then
 		warn("Umber: could not download Obsidian.")
 		return
 	end
@@ -125,7 +126,8 @@ _rl0[7] = game.Stats
 _rl0[8] = game:GetService("PathfindingService")
 local _UserInputService = game:GetService("UserInputService")
 local _LocalPlayer = Players.LocalPlayer
-local Window = Library:CreateWindow({ Title = "Umber", Footer = "v0.3", NotifySide = "Right", Font = Enum.Font.Gotham })
+getgenv().UmberBuild = "1117-1955"
+local Window = Library:CreateWindow({ Title = "Umber", Footer = "v0.3.1", NotifySide = "Right", Font = Enum.Font.Gotham })
 _rl0[2]:SetLibrary(Library)
 _rl0[2]:SetFolder("Umber")
 _rl0[2]:SetDefaultTheme({ FontFace = "Gotham", FontColor = "ffffff", MainColor = "4d3b27", AccentColor = "a45b26",
@@ -300,10 +302,12 @@ local function RestoreFog()
 	table.clear(AtmosphereOriginal)
 end
 local WorldConfig = { Fullbright = false, NoFog = false }
+local ApplyingWorld = false
 local function ApplyWorldLighting()
 	if Unloaded then
 		return
 	end
+	ApplyingWorld = true
 	if WorldConfig.Fullbright then
 		_Lighting.Ambient = Color3.new(1, 1, 1)
 		_Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
@@ -318,12 +322,58 @@ local function ApplyWorldLighting()
 	else
 		RestoreFog()
 	end
+	ApplyingWorld = false
 end
 local function RestoreWorldLighting()
+	ApplyingWorld = true
 	_Lighting.Ambient = WorldOriginal.Ambient
 	_Lighting.OutdoorAmbient = WorldOriginal.OutdoorAmbient
 	_Lighting.Brightness = WorldOriginal.Brightness
 	RestoreFog()
+	ApplyingWorld = false
+end
+do
+	local function ForceWorldLighting()
+		if Unloaded or ApplyingWorld then
+			return
+		end
+		ApplyingWorld = true
+		if WorldConfig.Fullbright then
+			if _Lighting.Ambient ~= Color3.new(1, 1, 1) then
+				_Lighting.Ambient = Color3.new(1, 1, 1)
+			end
+			if _Lighting.OutdoorAmbient ~= Color3.new(1, 1, 1) then
+				_Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+			end
+			if _Lighting.Brightness ~= 3 then
+				_Lighting.Brightness = 3
+			end
+		end
+		if WorldConfig.NoFog then
+			ClearFog()
+		end
+		ApplyingWorld = false
+	end
+	local AtmosphereWatched = setmetatable({}, { __mode = "k" })
+	local function WatchAtmosphere()
+		local Atmosphere = _Lighting:FindFirstChildOfClass("Atmosphere")
+		if not Atmosphere or AtmosphereWatched[Atmosphere] then
+			return
+		end
+		AtmosphereWatched[Atmosphere] = true
+		table.insert(Connections, Atmosphere:GetPropertyChangedSignal("Density"):Connect(ForceWorldLighting))
+		table.insert(Connections, Atmosphere:GetPropertyChangedSignal("Haze"):Connect(ForceWorldLighting))
+	end
+	for _, Property in ipairs({ "Ambient", "OutdoorAmbient", "Brightness", "FogStart", "FogEnd" }) do
+		table.insert(Connections, _Lighting:GetPropertyChangedSignal(Property):Connect(ForceWorldLighting))
+	end
+	table.insert(Connections, _Lighting.ChildAdded:Connect(function(Child)
+		if Child:IsA("Atmosphere") then
+			WatchAtmosphere()
+			ForceWorldLighting()
+		end
+	end))
+	WatchAtmosphere()
 end
 local LastFogGuard = 0
 local function GuardWorldFog()
@@ -384,7 +434,7 @@ local PlayerConfig = { Enabled = false, Box = true, BoxColor = Color3.fromRGB(12
 	GrabbedColor = Color3.fromRGB(255, 70, 70), Pinned = true,
 	PinnedColor = Color3.fromRGB(255, 170, 60), Burning = false,
 	BurningColor = Color3.fromRGB(255, 130, 40), BrokenLegs = false,
-	BrokenLegsColor = Color3.fromRGB(180, 180, 255), BoxStyle = "Box"
+	BrokenLegsColor = Color3.fromRGB(180, 180, 255), BoxStyle = "Box", Target = "Other Players"
 }
 local SurgeonConfig = { Enabled = false, Threshold = 30, Color = Color3.fromRGB(255, 90, 90), Box = true,
 	BoxColor = Color3.fromRGB(255, 90, 90), BoxStyle = "Box", Chams = false,
@@ -438,10 +488,10 @@ local function ApplyChargeSpeed()
 		return
 	end
 	local UserStates = Character:FindFirstChild("UserStates")
-	local _sc12 = UserStates and UserStates:FindFirstChild("SpeedController")
-	local Module = _sc12
+	local _sc7 = UserStates and UserStates:FindFirstChild("SpeedController")
+	local Module = _sc7
 	local Success, Result = false, nil
-	if _sc12 then
+	if _sc7 then
 		Success, Result = pcall(require, Module)
 	end
 	if Success then
@@ -469,9 +519,9 @@ local function SpoofGrabPosition()
 		return
 	end
 	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChildOfClass("Humanoid")
-	local Humanoid = _sc11
-	if not _sc11 then
+	local _sc6 = Character and Character:FindFirstChildOfClass("Humanoid")
+	local Humanoid = _sc6
+	if not _sc6 then
 		return
 	end
 	Humanoid:Move(Vector3.new(0, 100000, 0))
@@ -490,8 +540,8 @@ local function IsMeleeTool(Tool)
 	if not Animations then
 		return false
 	end
-	local _sc11_s1 = Animations:FindFirstChild("SwingRight") ~= nil or Animations:FindFirstChild("SwingDown") ~= nil
-	return _sc11_s1 or Animations:FindFirstChild("Thrust") ~= nil
+	local _sc6_s1 = Animations:FindFirstChild("SwingRight") ~= nil or Animations:FindFirstChild("SwingDown") ~= nil
+	return _sc6_s1 or Animations:FindFirstChild("Thrust") ~= nil
 end
 local MeleeToolCache = setmetatable({}, { __mode = "k" })
 local function ApplySwingSpeed()
@@ -544,10 +594,41 @@ local ProjectDepth = table.create(8)
 local ProjectEdges = { { 1, 2 }, { 3, 4 }, { 1, 3 }, { 2, 4 }, { 5, 6 }, { 7, 8 }, { 5, 7 }, { 6, 8 }, { 1, 5 }, { 2, 6 },
 	{ 3, 7 }, { 4, 8 }
 }
-local function ProjectModel(Model, Camera)
-	local Success, BoxCFrame, BoxSize = pcall(Model.GetBoundingBox, Model)
-	if not Success then
+local function BodyBounds(Model)
+	local Min, Max
+	local Parts = 0
+	for _, Part in Model:GetChildren() do
+		if Part:IsA("BasePart") then
+			local Half = Part.Size * 0.5
+			local Low = Part.Position - Half
+			local High = Part.Position + Half
+			Parts += 1
+			if Min then
+				Min = Vector3.new(math.min(Min.X, Low.X), math.min(Min.Y, Low.Y), math.min(Min.Z, Low.Z))
+				Max = Vector3.new(math.max(Max.X, High.X), math.max(Max.Y, High.Y), math.max(Max.Z, High.Z))
+			else
+				Min = Low
+				Max = High
+			end
+		end
+	end
+	if Parts < 3 then
 		return nil
+	end
+	return Min, Max
+end
+local function ProjectModel(Model, Camera)
+	local Min, Max = BodyBounds(Model)
+	local BoxCFrame, BoxSize
+	if Min then
+		BoxSize = Max - Min
+		BoxCFrame = CFrame.new((Min + Max) * 0.5)
+	else
+		local Success
+		Success, BoxCFrame, BoxSize = pcall(Model.GetBoundingBox, Model)
+		if not Success then
+			return nil
+		end
 	end
 	local MinX = math.huge
 	local MinY = math.huge
@@ -557,10 +638,13 @@ local function ProjectModel(Model, Camera)
 	local AllFront = true
 	for Index = 0, 7 do
 		local _t1642 = Index % 2
-		local _sc12 = math.floor(Index / 2) % 2 == 0 and 0.5 or -0.5
-		local _sc13 = Index < 4 and 0.5 or -0.5
+		local _sc6 = math.floor(Index / 2) % 2 == 0 and 0.5 or -0.5
 		local World = BoxCFrame
-			* Vector3.new(BoxSize.X * (_t1642 == 0 and 0.5 or -0.5), BoxSize.Y * _sc12, BoxSize.Z * _sc13)
+			* Vector3.new(
+				BoxSize.X * (_t1642 == 0 and 0.5 or -0.5),
+				BoxSize.Y * _sc6,
+				BoxSize.Z * (Index < 4 and 0.5 or -0.5)
+			)
 		local Point = Camera:WorldToViewportPoint(World)
 		ProjectCorners[Index + 1] = World
 		ProjectDepth[Index + 1] = Point.Z
@@ -630,10 +714,16 @@ local function MakeEntry(Kind)
 	Box.Filled = false
 	Box.Thickness = 1
 	Box.Visible = false
+	local Outline = Drawing.new("Square")
+	Outline.Filled = false
+	Outline.Thickness = 3
+	Outline.Color = Color3.new(0, 0, 0)
+	Outline.Transparency = 0.6
+	Outline.Visible = false
 	local Tracer = Drawing.new("Line")
 	Tracer.Thickness = 1
 	Tracer.Visible = false
-	local Entry = { Kind = Kind, Fill = Fill, Box = Box, Corners = nil, NameText = CreateText(14),
+	local Entry = { Kind = Kind, Fill = Fill, Box = Box, Outline = Outline, Corners = nil, NameText = CreateText(14),
 		HealthText = CreateText(13), TimerText = CreateText(14), Tracer = Tracer, StatusTexts = {},
 		Highlight = nil, Suppressed = {}, Gui = nil, Humanoid = nil, Root = nil, SuppressTarget = nil,
 		SuppressAt = 0, SlowAt = 0, StatusAt = 0, FuseAt = 0
@@ -691,7 +781,9 @@ local function SuppressHighlights(Entry, Model, Ours)
 end
 local function DestroyEntry(Entry)
 	RestoreHighlights(Entry)
-	for _, Object in { Entry.Fill, Entry.Box, Entry.NameText, Entry.HealthText, Entry.TimerText, Entry.Tracer } do
+	for _, Object in { Entry.Fill, Entry.Box, Entry.Outline, Entry.NameText, Entry.HealthText, Entry.TimerText,
+		Entry.Tracer
+	} do
 		pcall(function()
 			Object:Remove()
 		end)
@@ -739,9 +831,9 @@ local function EnsureGui(Entry, Model)
 	if Entry.Gui and Entry.Gui.Holder and Entry.Gui.Holder.Parent then
 		return Entry.Gui
 	end
-	local _sc12_s1 = Model:FindFirstChild("Head") or Model:FindFirstChild("HumanoidRootPart")
-	local Head = _sc12_s1
-	if not _sc12_s1 then
+	local _sc7_s1 = Model:FindFirstChild("Head") or Model:FindFirstChild("HumanoidRootPart")
+	local Head = _sc7_s1
+	if not _sc7_s1 then
 		return nil
 	end
 	local Holder = Instance.new("BillboardGui")
@@ -857,8 +949,8 @@ local function GetStatuses(Model)
 		local Pin = UserStates:FindFirstChild("Pin")
 		if Pin and typeof(Pin.Value) == "string" and Pin.Value ~= "None" and Pin.Value ~= "" then
 			local insert = table.insert
-			local _sc12 = _rl0[23][Pin.Value]
-			insert(Statuses, { Text = _sc12 or Pin.Value, Color = PlayerConfig.PinnedColor })
+			local _t2750 = _rl0[23][Pin.Value]
+			insert(Statuses, { Text = _t2750 or Pin.Value, Color = PlayerConfig.PinnedColor })
 		end
 	end
 	if PlayerConfig.Burning then
@@ -891,10 +983,11 @@ end
 local function HideEntry(Entry)
 	Set(Entry.Fill, "Visible", false)
 	Set(Entry.Box, "Visible", false)
+	Set(Entry.Outline, "Visible", false)
 	for Index = 1, 8 do
-		local _sc11 = Entry.Corners and Entry.Corners[Index]
-		local Line = _sc11
-		if _sc11 then
+		local _sc6 = Entry.Corners and Entry.Corners[Index]
+		local Line = _sc6
+		if _sc6 then
 			Set(Line, "Visible", false)
 		end
 	end
@@ -927,23 +1020,23 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 		return
 	end
 	local Cached = TrackedStore[Model]
-	local _sc11 = Cached and Cached.Humanoid
-	local HumanoidInstance = _sc11
-	if not _sc11 or not HumanoidInstance.Parent then
+	local _sc6 = Cached and Cached.Humanoid
+	local HumanoidInstance = _sc6
+	if not _sc6 or not HumanoidInstance.Parent then
 		HumanoidInstance = Model:FindFirstChildOfClass("Humanoid")
 	end
 	if not HumanoidInstance or HumanoidInstance.Health <= 0 then
 		return
 	end
-	local _sc14 = Cached and Cached.Root
-	local Root = _sc14
-	if not _sc14 or not Root.Parent then
+	local _sc9 = Cached and Cached.Root
+	local Root = _sc9
+	if not _sc9 or not Root.Parent then
 		Root = Model:FindFirstChild("HumanoidRootPart")
 	end
-	local _sc16 = Root and Root.Position
-	local RootPos = _sc16
+	local _sc12 = Root and Root.Position
+	local RootPos = _sc12
 	local Distance = 0
-	if _sc16 then
+	if _sc12 then
 		local ToRoot = RootPos - View.Position
 		if ToRoot:Dot(View.Look) < -2 then
 			return
@@ -956,15 +1049,14 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 	local Far = Kind == "zombie" and Distance > 150
 	local Label, Type
 	if Kind == "zombie" then
-		local _sc18 = Cached and Cached.Kind == Kind and Cached.ZLabel and View.Now - Cached.SlowAt < 1
-		if _sc18 then
+		if Cached and Cached.Kind == Kind and Cached.ZLabel and View.Now - Cached.SlowAt < 1 then
 			Type = Cached.ZType
 			Label = Cached.ZLabel
 		else
 			Type = Model:GetAttribute("Type")
-			local _sc19 = Type == nil and Model.Name
-			local _sc18 = _sc19
-			if not _sc19 then
+			local _sc17 = Type == nil and Model.Name
+			local _sc18 = _sc17
+			if not _sc17 then
 				_sc18 = ZombieNames[Type] or tostring(Type)
 			end
 			Label = _sc18
@@ -997,9 +1089,9 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 	end
 	local CenterX = (MinX + MaxX) * 0.5
 	if RootPos then
-		local _sc19 = Far and math.floor(Distance / 5) * 5
-		local _sc18 = _sc19
-		Distance = if _sc19 then _sc18 else math.floor(Distance)
+		local _sc15 = Far and math.floor(Distance / 5) * 5
+		local _sc18 = _sc15
+		Distance = if _sc15 then _sc18 else math.floor(Distance)
 	end
 	if Config.Distance then
 		Label = string.format("%s [%dm]", Label, Distance)
@@ -1011,6 +1103,7 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 	local Corners = Entry.Corners
 	Set(Entry.Box, "Visible", ShowBox)
 	Set(Entry.Fill, "Visible", ShowFill)
+	Set(Entry.Outline, "Visible", ShowBox)
 	if ShowCorners then
 		local _sc18 = Corners
 		Corners = if Corners then _sc18 else EnsureCorners(Entry)
@@ -1028,6 +1121,9 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 		if ShowBox then
 			local Position = Vector2.new(MinX, MinY)
 			local Size = Vector2.new(MaxX - MinX, MaxY - MinY)
+			Set(Entry.Outline, "Color", Color3.new(0, 0, 0))
+			Set(Entry.Outline, "Position", Position - Vector2.new(1, 1))
+			Set(Entry.Outline, "Size", Size + Vector2.new(2, 2))
 			Set(Entry.Box, "Color", BoxColor)
 			Set(Entry.Box, "Position", Position)
 			Set(Entry.Box, "Size", Size)
@@ -1046,7 +1142,7 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 			for Index = 1, 4 do
 				local X = (Index == 1 or Index == 3) and Left or Right
 				local Y = Index <= 2 and Top or Bottom
-				local _sc19 = Index <= 2 and 1 or -1
+				local _t3357 = Index <= 2
 				local Horizontal = Corners[Index * 2 - 1]
 				local Vertical = Corners[Index * 2]
 				Set(Horizontal, "Color", BoxColor)
@@ -1054,7 +1150,7 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 				Set(Horizontal, "To", Vector2.new(X + ((Index == 1 or Index == 3) and 1 or -1) * Length, Y))
 				Set(Vertical, "Color", BoxColor)
 				Set(Vertical, "From", Vector2.new(X, Y))
-				Set(Vertical, "To", Vector2.new(X, Y + _sc19 * Length))
+				Set(Vertical, "To", Vector2.new(X, Y + (_t3357 and 1 or -1) * Length))
 			end
 		end
 	end
@@ -1136,9 +1232,10 @@ local function RenderModel(Model, Kind, Seen, View, Store)
 		Set(Highlight, "FillColor", HighlightColor)
 		Set(Highlight, "OutlineColor", HighlightColor)
 		Set(Highlight, "Enabled", true)
-		local _sc28 = Entry.SuppressTarget ~= Target
-		_sc28 = _sc28 or View.Now - (Entry.SuppressAt or 0) >= 0.25
-		if _sc28 then
+		local SuppressTarget = Entry.SuppressTarget
+		local _sc15 = SuppressTarget ~= Target
+		_sc15 = if SuppressTarget ~= Target then _sc15 else View.Now - (Entry.SuppressAt or 0) >= 0.25
+		if _sc15 then
 			Entry.SuppressTarget = Target
 			Entry.SuppressAt = View.Now
 			SuppressHighlights(Entry, Target, Highlight)
@@ -1210,8 +1307,8 @@ local function UpdateESP()
 	if Unloaded then
 		return
 	end
-	local _sc11_s1 = ZombieConfig.Enabled or PlayerConfig.Enabled
-	if not (_sc11_s1 or SurgeonConfig.Enabled) then
+	local _sc6_s1 = ZombieConfig.Enabled or PlayerConfig.Enabled
+	if not (_sc6_s1 or SurgeonConfig.Enabled) then
 		for Model, Entry in Tracked do
 			if not Model.Parent then
 				DestroyEntry(Entry)
@@ -1269,9 +1366,14 @@ local function UpdateESP()
 	if PlayerConfig.Enabled then
 		local Container = workspace:FindFirstChild("Players")
 		if Container then
+			local Target = PlayerConfig.Target
+			local Character = _LocalPlayer.Character
 			for _, Model in Container:GetChildren() do
-				if Model:IsA("Model") and Model ~= _LocalPlayer.Character then
-					RenderModel(Model, "player", Seen, View)
+				if Model:IsA("Model") then
+					local IsSelf = Model == Character
+					if IsSelf and Target ~= "Other Players" or not IsSelf and Target ~= "Self" then
+						RenderModel(Model, "player", Seen, View)
+					end
 				end
 			end
 		end
@@ -1338,7 +1440,7 @@ local function IsBarrel(Agent)
 	return Agent:GetAttribute("Type") == "Barrel"
 end
 local BlastSpheres = setmetatable({}, { __mode = "k" })
-local LastBlastRing = 0
+_rl1[1] = 0
 local BlastSeen = {}
 local function DestroyBlastSphere(Model)
 	local Part = BlastSpheres[Model]
@@ -1353,7 +1455,7 @@ local function UpdateBlastRings()
 	if Unloaded then
 		return
 	end
-	if not ZombieConfig.BlastRadius then
+	if not ZombieConfig.Enabled or not ZombieConfig.BlastRadius then
 		if next(BlastSpheres) then
 			for Model in BlastSpheres do
 				DestroyBlastSphere(Model)
@@ -1362,10 +1464,10 @@ local function UpdateBlastRings()
 		return
 	end
 	local Now = time()
-	if Now - LastBlastRing < 0.05 then
+	if Now - _rl1[1] < 0.1 then
 		return
 	end
-	LastBlastRing = Now
+	_rl1[1] = Now
 	local Camera = workspace.CurrentCamera
 	local Container = workspace:FindFirstChild("Zombies")
 	if not Camera or not Container then
@@ -1544,8 +1646,8 @@ local function IsAimType(Config, Model)
 		return true
 	end
 	local Type = Model:GetAttribute("Type")
-	local _sc11 = Type and ZombieNames[Type] or Model.Name
-	return Config.Types[_sc11] == true
+	local _sc6 = Type and ZombieNames[Type] or Model.Name
+	return Config.Types[_sc6] == true
 end
 local function GetAimPart(Model)
 	local Head = Model:FindFirstChild("Head")
@@ -1589,19 +1691,19 @@ local function PickAimTarget(Config)
 	return Best
 end
 local CachedPing = 0
-local LastPingSample = 0
+_rl1[2] = 0
 local SilentTargetPosition
 local ShoveRoot
 local SilentTargetModel
-local LastSilentSample = 0
+_rl1[3] = 0
 local function SampleSilentTarget()
 	local Now = time()
-	if Now - LastSilentSample < 1 / 30 then
+	if Now - _rl1[3] < 1 / 30 then
 		return
 	end
-	LastSilentSample = Now
-	if Now - LastPingSample > 1 then
-		LastPingSample = Now
+	_rl1[3] = Now
+	if Now - _rl1[2] > 1 then
+		_rl1[2] = Now
 		local Ok, Value = pcall(function()
 			return _LocalPlayer:GetNetworkPing()
 		end)
@@ -1632,8 +1734,8 @@ local function SampleSilentTarget()
 		return
 	end
 	local Root = Target.Model:FindFirstChild("HumanoidRootPart")
-	local _sc11_s1 = Root and Root.AssemblyLinearVelocity or Vector3.zero
-	SilentTargetPosition = Target.Position + _sc11_s1 * (CachedPing * 0.5)
+	local _sc6_s1 = Root and Root.AssemblyLinearVelocity or Vector3.zero
+	SilentTargetPosition = Target.Position + _sc6_s1 * (CachedPing * 0.5)
 	SilentTargetModel = Target.Model.Parent and GetVisual(Target.Model) or nil
 end
 local function EnsureFOVCircle(Name)
@@ -1696,9 +1798,8 @@ local function UpdateSilentAim()
 end
 local function MakeHeadshot(Result, Origin, Direction)
 	local Part = Result.Instance
-	local _sc11_s1 = not Part or not Part.Parent
-	local _sc11_s2 = _sc11_s1 or Part.Parent.Name ~= "m_Zombie"
-	if _sc11_s2 or Part.Name == "Head" then
+	local _sc6_s1 = not Part or not Part.Parent
+	if _sc6_s1 or Part.Parent.Name ~= "m_Zombie" or Part.Name == "Head" then
 		return nil
 	end
 	if math.random() * 100 > MeleeConfig.Chance then
@@ -1853,1385 +1954,1406 @@ local function RemoveHitboxHook()
 	end
 end
 local function SyncHook()
-	local _sc11_s1 = HitboxConfig.Enabled or MeleeConfig.AutoHeadshot
-	local _sc11_s2 = _sc11_s1 or AimConfig.Silent.Enabled
-	if _sc11_s2 or ClassConfig.ShoveExpander then
+	local _sc6_s1 = HitboxConfig.Enabled or MeleeConfig.AutoHeadshot
+	if _sc6_s1 or AimConfig.Silent.Enabled or ClassConfig.ShoveExpander then
 		InstallHitboxHook()
 	else
 		RemoveHitboxHook()
 	end
 end
-local HitboxVisuals = {}
-_rl0[24] = 0
-local function ClearHitboxVisuals()
-	for _, Box in HitboxVisuals do
-		pcall(function()
-			Box:Destroy()
-		end)
-	end
-	table.clear(HitboxVisuals)
-end
-local function ShowBox(Part)
-	local Box = HitboxVisuals[Part]
-	if not Box or Box.Parent ~= Part then
-		Box = Instance.new("BoxHandleAdornment")
-		Box.Name = "UmberHitbox"
-		Box.Adornee = Part
-		Box.Color3 = Color3.fromRGB(255, 170, 80)
-		Box.AlwaysOnTop = true
-		Box.Parent = Part
-		HitboxVisuals[Part] = Box
-	end
-	local Pad = 0
-	if HitboxConfig.Enabled then
-		Pad = HitboxConfig.Size
-	end
-	Set(Box, "Size", Part.Size + Vector3.new(Pad, Pad, Pad))
-	Set(Box, "Transparency", HitboxConfig.Transparency)
-end
-local function UpdateHitboxVisuals()
-	if Unloaded then
-		return
-	end
-	local Now = time()
-	if Now - _rl0[24] < 0.05 then
-		return
-	end
-	_rl0[24] = Now
-	if not HitboxConfig.Show then
-		if next(HitboxVisuals) then
-			ClearHitboxVisuals()
-		end
-		return
-	end
-	RefreshHitboxParts()
-	local Seen = {}
-	for Index = 1, #HitboxParts do
-		local Part = HitboxParts[Index]
-		Seen[Part] = true
-		ShowBox(Part)
-	end
-	for Part, Box in HitboxVisuals do
-		if not Seen[Part] then
-			pcall(function()
-				Box:Destroy()
-			end)
-			HitboxVisuals[Part] = nil
-		end
-	end
-end
-local ProjectileTimers = setmetatable({}, { __mode = "k" })
-_rl0[25] = 0
-local TimerColorHot = Color3.fromRGB(255, 70, 70)
-local TimerColorCold = Color3.fromRGB(255, 170, 80)
-local TrajectoryLines
-local TrajectoryMark
-local TrajectorySegments = 72
-_rl0[26] = 0.05
-local LearnedThrowSpeed = {}
-_rl0[27] = { "ThrowSpeed", "ThrowPower", "ProjectileSpeed", "LaunchSpeed", "MuzzleVelocity", "GrenadeSpeed" }
-_rl0[28] = { "HasFuse", "FuseTimer", "NumFuseBones", "NoUnderhand" }
-_rl0[29] = { ["Hand Mortar"] = true, ["Tar Bottle"] = true, Grenade = true, ["Improved Grenade"] = true }
-_rl0[30] = _LocalPlayer:GetMouse()
-local ThrowFilter = RaycastParams.new()
-ThrowFilter.FilterType = Enum.RaycastFilterType.Exclude
-local ThrowIgnore = {}
-local function ClearProjectileTimers()
-	for _, Entry in ProjectileTimers do
-		pcall(function()
-			Entry.Text:Remove()
-		end)
-	end
-	table.clear(ProjectileTimers)
-end
-local function LearnProjectileSpeed(Projectile)
-	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChildOfClass("Tool")
-	local Tool = _sc11
-	if not _sc11 then
-		return
-	end
-	local Name = Tool.Name
-	if Projectile:IsA("BasePart") then
-		local Speed = Projectile.AssemblyLinearVelocity.Magnitude
-		if Speed >= 10 and Speed <= 400 then
-			LearnedThrowSpeed[Name] = Speed
-		end
-		return
-	end
-	if not Projectile:IsA("ValueBase") then
-		return
-	end
-	local First = Projectile.Value
-	if typeof(First) ~= "Vector3" then
-		return
-	end
-	task.spawn(function()
-		task.wait(0.1)
-		if not Projectile.Parent then
-			return
-		end
-		local Second = Projectile.Value
-		if typeof(Second) ~= "Vector3" then
-			return
-		end
-		local Speed = (Second - First).Magnitude / 0.1
-		if Speed >= 10 and Speed <= 400 then
-			LearnedThrowSpeed[Name] = Speed
-		end
-	end)
-end
-local function TrackProjectile(Projectile)
-	if Unloaded then
-		return
-	end
-	LearnProjectileSpeed(Projectile)
-	if not ThrowableConfig.Timer then
-		return
-	end
-	if not Projectile:IsA("ValueBase") or ProjectileTimers[Projectile] then
-		return
-	end
-	local Fuse = Projectile:GetAttribute("FuseTimer")
-	if typeof(Fuse) ~= "number" then
-		return
-	end
-	local Start = Projectile:GetAttribute("Start")
-	local Character = _LocalPlayer.Character
-	local _sc12 = Character and Character:FindFirstChild("HumanoidRootPart")
-	local Root = _sc12
-	if typeof(Start) ~= "Vector3" or not _sc12 then
-		return
-	end
-	if (Start - Root.Position).Magnitude > 12 then
-		return
-	end
-	ProjectileTimers[Projectile] = { Text = CreateText(14), Fuse = Fuse, Started = time() }
-end
-local function UntrackProjectile(Projectile)
-	local Entry = ProjectileTimers[Projectile]
-	if not Entry then
-		return
-	end
-	pcall(function()
-		Entry.Text:Remove()
-	end)
-	ProjectileTimers[Projectile] = nil
-end
-local function UpdateProjectileTimers(Now)
-	if not ThrowableConfig.Timer then
-		if next(ProjectileTimers) then
-			ClearProjectileTimers()
-		end
-		return
-	end
-	if Now - _rl0[25] < 1 / 30 then
-		return
-	end
-	_rl0[25] = Now
-	local Camera = workspace.CurrentCamera
-	if not Camera then
-		return
-	end
-	for Projectile, Entry in ProjectileTimers do
-		if not Projectile.Parent then
-			UntrackProjectile(Projectile)
-		else
-			local Remaining = Entry.Fuse - (Now - Entry.Started)
-			local Screen
-			if typeof(Projectile.Value) == "Vector3" then
-				Screen = Camera:WorldToViewportPoint(Projectile.Value)
-			end
-			if Screen and Remaining > 0 and Screen.Z > 0 then
-				Set(Entry.Text, "Visible", true)
-				Set(Entry.Text, "Text", string.format("%.1f", Remaining))
-				Set(Entry.Text, "Color", Remaining < 1 and TimerColorHot or TimerColorCold)
-				Set(Entry.Text, "Position", Vector2.new(Screen.X, Screen.Y - 20))
-			else
-				Set(Entry.Text, "Visible", false)
-			end
-		end
-	end
-end
-local MortarFuseText
-local MortarFuse
-_rl0[31] = 5
-_rl0[32] = Color3.fromRGB(255, 70, 70)
-_rl0[33] = Color3.fromRGB(255, 170, 80)
-_rl0[34] = 0
-local function IsFuseLit(Tool)
-	local Lit = Tool:GetAttribute("FuseLit")
-	return Lit == true or Lit == "true"
-end
-local function GetMortarAnchor(Tool)
-	local Reference = Tool:FindFirstChild("ModelReference")
-	local _sc11 = Reference and Reference.Value
-	local Model = _sc11
-	if _sc11 and Model.Parent then
-		local Grenade = Model:FindFirstChild("Grenade")
-		if Grenade and Grenade:IsA("Model") then
-			return Grenade:GetPivot().Position, Grenade
-		end
-		return Model:GetPivot().Position, Model
-	end
-	return nil, nil
-end
-local MortarHighlight
-local MortarHighlightModel
-local function ClearMortarHighlight()
-	if MortarHighlight then
-		pcall(function()
-			MortarHighlight:Destroy()
-		end)
-	end
-	MortarHighlight = nil
-	MortarHighlightModel = nil
-end
-local function UpdateMortarHighlight(Model, Remaining)
-	if not Model or not Model.Parent then
-		ClearMortarHighlight()
-		return
-	end
-	if MortarHighlightModel ~= Model then
-		ClearMortarHighlight()
-		local Highlight = Instance.new("Highlight")
-		Highlight.Name = "UmberMortarChams"
-		Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-		Highlight.FillTransparency = 0.55
-		Highlight.OutlineTransparency = 0
-		Highlight.Parent = Model
-		MortarHighlight = Highlight
-		MortarHighlightModel = Model
-	end
-	local Color = Remaining < 1 and _rl0[32] or _rl0[33]
-	MortarHighlight.FillColor = Color
-	MortarHighlight.OutlineColor = Color
-	MortarHighlight.Enabled = true
-end
-local function UpdateMortarFuse()
-	if not ThrowableConfig.MortarTimer then
-		MortarFuse = nil
-		ClearMortarHighlight()
-		if MortarFuseText then
-			Set(MortarFuseText, "Visible", false)
-		end
-		return
-	end
-	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChildOfClass("Tool")
-	local Tool = _sc11
-	if not _sc11 or not IsFuseLit(Tool) then
-		MortarFuse = nil
-		ClearMortarHighlight()
-		if MortarFuseText then
-			Set(MortarFuseText, "Visible", false)
-		end
-		return
-	end
-	if not MortarFuse or MortarFuse.Tool ~= Tool then
-		MortarFuse = { Tool = Tool, Started = workspace:GetServerTimeNow() }
-	end
-	local Remaining = _rl0[31] - (workspace:GetServerTimeNow() - MortarFuse.Started)
-	if Remaining <= 0 then
-		ClearMortarHighlight()
-		if MortarFuseText then
-			Set(MortarFuseText, "Visible", false)
-		end
-		return
-	end
-	local Now = time()
-	if Now - _rl0[34] < 0.05 then
-		return
-	end
-	_rl0[34] = Now
-	if not MortarFuseText then
-		MortarFuseText = CreateText(20)
-	end
-	local Camera = workspace.CurrentCamera
-	if not Camera then
-		return
-	end
-	local Center = Camera.ViewportSize * 0.5
-	local Position = Vector2.new(Center.X, Center.Y + 70)
-	local Anchor, Model = GetMortarAnchor(Tool)
-	UpdateMortarHighlight(Model, Remaining)
-	if Anchor then
-		local Screen, OnScreen = Camera:WorldToViewportPoint(Anchor)
-		if OnScreen then
-			Position = Vector2.new(Screen.X, Screen.Y)
-		end
-	end
-	Set(MortarFuseText, "Visible", true)
-	Set(MortarFuseText, "Text", string.format("%.1f", Remaining))
-	Set(MortarFuseText, "Color", Remaining < 1 and _rl0[32] or _rl0[33])
-	Set(MortarFuseText, "Position", Position)
-end
-local function EnsureTrajectoryLines()
-	if TrajectoryLines then
-		return TrajectoryLines
-	end
-	TrajectoryLines = {}
-	for Index = 1, TrajectorySegments do
-		local Line = Drawing.new("Line")
-		Line.Thickness = 2
-		Line.Visible = false
-		TrajectoryLines[Index] = Line
-	end
-	TrajectoryMark = Drawing.new("Square")
-	TrajectoryMark.Filled = true
-	TrajectoryMark.Thickness = 1
-	TrajectoryMark.Visible = false
-	return TrajectoryLines
-end
-local function HideTrajectory()
-	if TrajectoryMark then
-		Set(TrajectoryMark, "Visible", false)
-	end
-	if not TrajectoryLines then
-		return
-	end
-	for Index = 1, TrajectorySegments do
-		Set(TrajectoryLines[Index], "Visible", false)
-	end
-end
-local function ProjectTrajectory(Camera, From, To)
-	local ScreenFrom = Camera:WorldToViewportPoint(From)
-	local ScreenTo = Camera:WorldToViewportPoint(To)
-	if ScreenFrom.Z <= 0 and ScreenTo.Z <= 0 then
-		return nil
-	end
-	if ScreenFrom.Z <= 0 then
-		local Delta = ScreenTo.Z - ScreenFrom.Z
-		if Delta <= 0.001 then
-			return nil
-		end
-		ScreenFrom = Camera:WorldToViewportPoint(From:Lerp(To, math.clamp((0.05 - ScreenFrom.Z) / Delta, 0, 1)))
-	elseif ScreenTo.Z <= 0 then
-		local Delta = ScreenFrom.Z - ScreenTo.Z
-		if Delta <= 0.001 then
-			return nil
-		end
-		ScreenTo = Camera:WorldToViewportPoint(To:Lerp(From, math.clamp((0.05 - ScreenTo.Z) / Delta, 0, 1)))
-	end
-	return Vector2.new(ScreenFrom.X, ScreenFrom.Y), Vector2.new(ScreenTo.X, ScreenTo.Y)
-end
-local function SolveThrow(Start, Target, Speed)
-	local DeltaX = Target.X - Start.X
-	local DeltaZ = Target.Z - Start.Z
-	local DeltaY = Target.Y - Start.Y
-	local Flat = DeltaX * DeltaX + DeltaZ * DeltaZ
-	local Gravity = -workspace.Gravity
-	local Speed2 = Speed * Speed
-	if Flat <= 0 then
-		return Vector3.new(0, DeltaY < 0 and -Speed or DeltaY > 0 and Speed or 0, 0)
-	end
-	local Scale = Flat / (2 * (Flat + DeltaY * DeltaY))
-	local Root = Speed2 * (2 * Gravity * DeltaY + Speed2) - Gravity * Gravity * Flat
-	if Root <= 0 then
-		return nil
-	end
-	local SqrtRoot = math.sqrt(Root)
-	local High = Scale * (Gravity * DeltaY + Speed2 + SqrtRoot)
-	if High < 0 or Speed2 - High < 0 then
-		return nil
-	end
-	local FlatRoot = math.sqrt(Flat)
-	local Vertical = math.sqrt(Speed2 - High)
-	if not (Gravity * Flat / (2 * Speed2) < DeltaY) then
-		Vertical = -Vertical
-	end
-	return Vector3.new(DeltaX / FlatRoot * math.sqrt(High), Vertical, DeltaZ / FlatRoot * math.sqrt(High))
-end
-local TrajectoryColor = Color3.fromRGB(255, 170, 80)
-local TrajectoryColorEnd = Color3.fromRGB(255, 240, 170)
-_rl0[35] = 0
-local function IsThrowableTool(Tool)
-	if _rl0[29][Tool.Name] or LearnedThrowSpeed[Tool.Name] then
-		return true
-	end
-	local Configuration = Tool:FindFirstChild("Configuration")
-	if not Configuration then
-		return false
-	end
-	for _, Name in ipairs(_rl0[28]) do
-		if Configuration:GetAttribute(Name) ~= nil then
-			return true
-		end
-	end
-	return false
-end
-local function GetThrowSpeed(Tool)
-	if not IsThrowableTool(Tool) then
-		return nil
-	end
-	local Configuration = Tool:FindFirstChild("Configuration")
-	if Configuration then
-		for _, Name in ipairs(_rl0[27]) do
-			local Value = Configuration:GetAttribute(Name)
-			if typeof(Value) == "number" and Value >= 10 then
-				return Value
-			end
-		end
-	end
-	return LearnedThrowSpeed[Tool.Name] or 55
-end
-local MobilePlayer
-_rl0[36] = 0
-local function IsMobilePlayer()
-	local Now = time()
-	if MobilePlayer ~= nil and Now - _rl0[36] < 2 then
-		return MobilePlayer
-	end
-	_rl0[36] = Now
-	MobilePlayer = _LocalPlayer:GetAttribute("Mobile") == true
-	if not MobilePlayer then
-		local PlayerGui = _LocalPlayer:FindFirstChildOfClass("PlayerGui")
-		MobilePlayer = PlayerGui ~= nil and PlayerGui:FindFirstChild("MobileGui") ~= nil
-	end
-	if not MobilePlayer then
-		MobilePlayer = _UserInputService.TouchEnabled and not _UserInputService.MouseEnabled
-	end
-	return MobilePlayer
-end
-local function GetThrowOrigin(Tool, Character)
-	local Ref = Tool:FindFirstChild("HandleWeldRef")
-	if Ref and Ref:IsA("ObjectValue") then
-		local Weld = Ref.Value
-		if Weld and Weld.Part1 then
-			return Weld.Part1
-		end
-	end
-	local _sc12_s1 = Character:FindFirstChild("RightHand") or Character:FindFirstChild("Right Arm")
-	return _sc12_s1 or Character:FindFirstChild("HumanoidRootPart")
-end
-local function UpdateTrajectory()
-	if not ThrowableConfig.Trajectory then
-		HideTrajectory()
-		return
-	end
-	local Now = time()
-	if Now - _rl0[35] < 1 / 30 then
-		return
-	end
-	_rl0[35] = Now
-	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChildOfClass("Tool")
-	local Tool = _sc11
-	local Camera = workspace.CurrentCamera
-	if not _sc11 or not Camera then
-		HideTrajectory()
-		return
-	end
-	local Speed = GetThrowSpeed(Tool)
-	if not Speed then
-		HideTrajectory()
-		return
-	end
-	local Origin = GetThrowOrigin(Tool, Character)
-	if not Origin then
-		HideTrajectory()
-		return
-	end
-	local Velocity
-	if IsMobilePlayer() then
-		Velocity = Camera.CFrame.LookVector * Speed
-	else
-		local Target = _rl0[30].Hit.Position
-		if typeof(Target) ~= "Vector3" then
-			HideTrajectory()
-			return
-		end
-		Velocity = SolveThrow(Origin.Position, Target, Speed)
-		if not Velocity then
-			local Direction = Target - Origin.Position
-			if Direction.Magnitude < 0.1 then
-				Direction = Camera.CFrame.LookVector
-			end
-			Velocity = Direction.Unit * Speed
-		end
-	end
-	local Lines = EnsureTrajectoryLines()
-	local Gravity = Vector3.new(0, -workspace.Gravity, 0)
-	local Point = Origin.Position
-	local Step = _rl0[26]
-	local Count = 0
-	local Hit = false
-	ThrowIgnore[1] = Character
-	ThrowIgnore[2] = Camera
-	ThrowFilter.FilterDescendantsInstances = ThrowIgnore
-	for Index = 1, TrajectorySegments do
-		local Next = Point + Velocity * Step + Gravity * (0.5 * Step * Step)
-		local Result = workspace:Raycast(Point, Next - Point, ThrowFilter)
-		Velocity += Gravity * Step
-		if Result then
-			Next = Result.Position
-			Hit = true
-		end
-		local ScreenFrom, ScreenTo = ProjectTrajectory(Camera, Point, Next)
-		local Line = Lines[Index]
-		local Alpha = Index / TrajectorySegments
-		if ScreenFrom then
-			Set(Line, "Visible", true)
-			Set(Line, "Color", TrajectoryColor:Lerp(TrajectoryColorEnd, Alpha))
-			Set(Line, "Thickness", 3 - Alpha * 1.5)
-			Set(Line, "From", ScreenFrom)
-			Set(Line, "To", ScreenTo)
-		else
-			Set(Line, "Visible", false)
-		end
-		Count = Index
-		Point = Next
-		if Result then
-			break
-		end
-	end
-	for Index = Count + 1, TrajectorySegments do
-		Set(Lines[Index], "Visible", false)
-	end
-	if TrajectoryMark then
-		local Screen = Camera:WorldToViewportPoint(Point)
-		if Screen.Z > 0 then
-			local Size = Hit and 9 or 5
-			Set(TrajectoryMark, "Visible", true)
-			Set(TrajectoryMark, "Color", TrajectoryColorEnd)
-			Set(TrajectoryMark, "Transparency", Hit and 0.05 or 0.5)
-			Set(TrajectoryMark, "Position", Vector2.new(Screen.X - Size * 0.5, Screen.Y - Size * 0.5))
-			Set(TrajectoryMark, "Size", Vector2.new(Size, Size))
-		else
-			Set(TrajectoryMark, "Visible", false)
-		end
-	end
-end
-local function UpdateThrowables()
-	if Unloaded then
-		return
-	end
-	local Now = time()
-	UpdateProjectileTimers(Now)
-	UpdateMortarFuse()
-	UpdateTrajectory()
-end
-task.spawn(function()
-	local Folder = workspace:WaitForChild("Projectiles", 60)
-	if Unloaded or not Folder then
-		return
-	end
-	Track(Folder.ChildAdded:Connect(TrackProjectile))
-	Track(Folder.ChildRemoved:Connect(UntrackProjectile))
-end)
-local BubbleSpheres = {}
-local function Cleanup()
-	Unloaded = true
-	SendUserCount("left")
-	for _, Connection in Connections do
-		if Connection.Connected then
-			Connection:Disconnect()
-		end
-	end
-	table.clear(Connections)
-	for _, Entry in Tracked do
-		DestroyEntry(Entry)
-	end
-	for _, Entry in SurgeonTracked do
-		DestroyEntry(Entry)
-	end
-	for _, Highlight in SupplyHighlights do
-		pcall(function()
-			Highlight:Destroy()
-		end)
-	end
-	table.clear(SupplyHighlights)
-	table.clear(SurgeonTracked)
-	table.clear(Tracked)
-	table.clear(Visuals)
-	table.clear(FuseMarks)
-	ESPEMA = 0
-	LastESPStep = 1
-	LastESPInterval = 1 / 30
-	ClearHitboxVisuals()
-	RemoveHitboxHook()
-	ClearProjectileTimers()
-	HideTrajectory()
-	ClearMortarHighlight()
-	MortarFuse = nil
-	if MortarFuseText then
-		pcall(function()
-			MortarFuseText:Remove()
-		end)
-		MortarFuseText = nil
-	end
-	for Model in BlastSpheres do
-		DestroyBlastSphere(Model)
-	end
-	for _, Circle in FOVCircles do
-		pcall(function()
-			Circle:Remove()
-		end)
-	end
-	table.clear(FOVCircles)
-	for _, Part in BubbleSpheres do
-		pcall(function()
-			Part:Destroy()
-		end)
-	end
-	table.clear(BubbleSpheres)
-	RestoreWorldLighting()
-	if TrajectoryLines then
-		for _, Line in TrajectoryLines do
-			pcall(function()
-				Line:Remove()
-			end)
-		end
-		TrajectoryLines = nil
-	end
-	ClearChargeSpeed()
-	ClearSwingBuffs()
-	if TargetChams then
-		pcall(function()
-			TargetChams:Destroy()
-		end)
-		TargetChams = nil
-	end
-	SilentTargetModel = nil
-	local Character = _LocalPlayer.Character
-	if Character then
-		pcall(function()
-			Character:SetAttribute("SwingSpeedScalar", nil)
-		end)
-	end
-	getgenv().UmberUnload = nil
-end
 do
-	local function BindCharacter()
-		SpeedModifier = nil
-		ApplySwingSpeed()
-		ApplyChargeSpeed()
-		local Character = _LocalPlayer.Character
-		if Character then
-			Track(Character.ChildAdded:Connect(function(Child)
-				if Child:IsA("Tool") then
-					ApplySwingSpeed()
+	local SurgeonState
+	do
+		local HitboxVisuals = {}
+		_rl0[24] = 0
+		local function ClearHitboxVisuals()
+			for _, Box in HitboxVisuals do
+				pcall(function()
+					Box:Destroy()
+				end)
+			end
+			table.clear(HitboxVisuals)
+		end
+		local function ShowBox(Part)
+			local Box = HitboxVisuals[Part]
+			if not Box or Box.Parent ~= Part then
+				Box = Instance.new("BoxHandleAdornment")
+				Box.Name = "UmberHitbox"
+				Box.Adornee = Part
+				Box.Color3 = Color3.fromRGB(255, 170, 80)
+				Box.AlwaysOnTop = true
+				Box.Parent = Part
+				HitboxVisuals[Part] = Box
+			end
+			local Pad = 0
+			if HitboxConfig.Enabled then
+				Pad = HitboxConfig.Size
+			end
+			Set(Box, "Size", Part.Size + Vector3.new(Pad, Pad, Pad))
+			Set(Box, "Transparency", HitboxConfig.Transparency)
+		end
+		local function UpdateHitboxVisuals()
+			if Unloaded then
+				return
+			end
+			local Now = time()
+			if Now - _rl0[24] < 0.05 then
+				return
+			end
+			_rl0[24] = Now
+			if not HitboxConfig.Show then
+				if next(HitboxVisuals) then
+					ClearHitboxVisuals()
 				end
-			end))
+				return
+			end
+			RefreshHitboxParts()
+			local Seen = {}
+			for Index = 1, #HitboxParts do
+				local Part = HitboxParts[Index]
+				Seen[Part] = true
+				ShowBox(Part)
+			end
+			for Part, Box in HitboxVisuals do
+				if not Seen[Part] then
+					pcall(function()
+						Box:Destroy()
+					end)
+					HitboxVisuals[Part] = nil
+				end
+			end
+		end
+		local ProjectileTimers = setmetatable({}, { __mode = "k" })
+		_rl0[25] = 0
+		local TimerColorHot = Color3.fromRGB(255, 70, 70)
+		local TimerColorCold = Color3.fromRGB(255, 170, 80)
+		local TrajectoryLines
+		local TrajectoryMark
+		local TrajectorySegments = 72
+		_rl0[26] = 0.05
+		local LearnedThrowSpeed = {}
+		_rl0[27] = { "ThrowSpeed", "ThrowPower", "ProjectileSpeed", "LaunchSpeed", "MuzzleVelocity", "GrenadeSpeed" }
+		_rl0[28] = { "HasFuse", "FuseTimer", "NumFuseBones", "NoUnderhand" }
+		_rl0[29] = { ["Hand Mortar"] = true, ["Tar Bottle"] = true, Grenade = true, ["Improved Grenade"] = true }
+		_rl0[30] = _LocalPlayer:GetMouse()
+		local ThrowFilter = RaycastParams.new()
+		ThrowFilter.FilterType = Enum.RaycastFilterType.Exclude
+		local ThrowIgnore = {}
+		local function ClearProjectileTimers()
+			for _, Entry in ProjectileTimers do
+				pcall(function()
+					Entry.Text:Remove()
+				end)
+			end
+			table.clear(ProjectileTimers)
+		end
+		local function LearnProjectileSpeed(Projectile)
+			local Character = _LocalPlayer.Character
+			local _sc6 = Character and Character:FindFirstChildOfClass("Tool")
+			local Tool = _sc6
+			if not _sc6 then
+				return
+			end
+			local Name = Tool.Name
+			if Projectile:IsA("BasePart") then
+				local Speed = Projectile.AssemblyLinearVelocity.Magnitude
+				if Speed >= 10 and Speed <= 400 then
+					LearnedThrowSpeed[Name] = Speed
+				end
+				return
+			end
+			if not Projectile:IsA("ValueBase") then
+				return
+			end
+			local First = Projectile.Value
+			if typeof(First) ~= "Vector3" then
+				return
+			end
 			task.spawn(function()
-				local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-				local Deadline = tick() + 10
-				while not Humanoid and tick() < Deadline do
-					task.wait(0.1)
-					Humanoid = Character:FindFirstChildOfClass("Humanoid")
-				end
-				if not Humanoid then
+				task.wait(0.1)
+				if not Projectile.Parent then
 					return
 				end
-				local Animator = Humanoid:FindFirstChildOfClass("Animator")
-				local Deadline_s1 = tick() + 10
-				while not Animator and tick() < Deadline_s1 do
-					task.wait(0.1)
-					Animator = Humanoid:FindFirstChildOfClass("Animator")
-				end
-				if not Animator then
+				local Second = Projectile.Value
+				if typeof(Second) ~= "Vector3" then
 					return
 				end
-				Track(Animator.AnimationPlayed:Connect(function(SwingTrack)
-					if not LegitConfig.AutoJump then
-						return
-					end
-					local _sc13 = SwingTrack and SwingTrack.Name
-					if _sc13 ~= "SwingRight" and _sc13 ~= "SwingDown" and _sc13 ~= "Thrust" then
-						return
-					end
-					local Tool = Character:FindFirstChildOfClass("Tool")
-					if not Tool then
-						return
-					end
-					local IsMelee = MeleeToolCache[Tool]
-					if IsMelee == nil then
-						IsMelee = IsMeleeTool(Tool)
-						MeleeToolCache[Tool] = IsMelee
-					end
-					if not IsMelee then
-						return
-					end
-					local _sc14_s1 = not Humanoid or Humanoid.Health <= 0
-					if _sc14_s1 or Humanoid.FloorMaterial == Enum.Material.Air then
-						return
-					end
-					local OkPower, CurrentPower = pcall(function()
-						return Humanoid.JumpPower
-					end)
-					local _sc15_s1 = not OkPower or typeof(CurrentPower) ~= "number"
-					local _sc15_s2 = _sc15_s1 or CurrentPower <= 0
-					local WasZero = _sc15_s2
-					if _sc15_s2 then
-						pcall(function()
-							Humanoid.JumpPower = 30
-						end)
-					end
-					Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-					if WasZero then
-						task.delay(0.15, function()
-							pcall(function()
-								Humanoid.JumpPower = 0
-							end)
-						end)
-					end
-				end))
+				local Speed = (Second - First).Magnitude / 0.1
+				if Speed >= 10 and Speed <= 400 then
+					LearnedThrowSpeed[Name] = Speed
+				end
 			end)
 		end
-	end
-	Track(_LocalPlayer.CharacterAdded:Connect(BindCharacter))
-	BindCharacter()
-end
-_rl0[37] = 0
-local function UpdateAutoBuild()
-	if not ClassConfig.AutoBuild or Unloaded then
-		return
-	end
-	local Now = tick()
-	if Now - _rl0[37] < 0.5 then
-		return
-	end
-	_rl0[37] = Now
-	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChild("HumanoidRootPart")
-	local Root = _sc11
-	if not _sc11 then
-		return
-	end
-	local Backpack = _LocalPlayer:FindFirstChild("Backpack")
-	local _sc12 = Backpack and Backpack:FindFirstChild("Hammer") or Character:FindFirstChild("Hammer")
-	local Hammer = _sc12
-	if not _sc12 then
-		return
-	end
-	local Remote = Hammer:FindFirstChild("RemoteEvent")
-	if not Remote then
-		return
-	end
-	local Container = workspace:FindFirstChild("Buildings")
-	if not Container then
-		return
-	end
-	local RootPos = Root.Position
-	local Best
-	local BestKey = math.huge
-	for _, Health in ipairs(Container:GetDescendants()) do
-		if not (Health.Name == "BuildingHealth" or Health.Name == "ConstructHealth") then
-			continue
-		end
-		local Building = Health.Parent
-		if not Building then
-			continue
-		end
-		local Hitbox = Building:FindFirstChild("Hitbox")
-		local Anchor = Hitbox or Building
-		local Ok, Pos = pcall(function()
-			if Anchor:IsA("BasePart") then
-				return Anchor.Position
+		local function TrackProjectile(Projectile)
+			if Unloaded then
+				return
 			end
-			return Anchor:GetPivot().Position
-		end)
-		if Ok and Pos then
-			local Distance = (Pos - RootPos).Magnitude
-			if Distance <= 15 then
-				local Key = Distance
-				if ClassConfig.BuildPriority == "Lowest Health Building" then
-					local OkValue, Value = pcall(function()
-						return Health.Value
-					end)
-					local OkMax, Max = pcall(function()
-						return Health:GetAttribute("MaxHealth")
-					end)
-					if OkValue and typeof(Value) == "number" and OkMax and typeof(Max) == "number" and Max > 0 then
-						if Value >= Max then
-							continue
-						end
-						Key = Value / Max
-					end
-				end
-				if Key < BestKey then
-					BestKey = Key
-					Best = Health
-				end
+			LearnProjectileSpeed(Projectile)
+			if not ThrowableConfig.Timer then
+				return
 			end
+			if not Projectile:IsA("ValueBase") or ProjectileTimers[Projectile] then
+				return
+			end
+			local Fuse = Projectile:GetAttribute("FuseTimer")
+			if typeof(Fuse) ~= "number" then
+				return
+			end
+			local Start = Projectile:GetAttribute("Start")
+			local Character = _LocalPlayer.Character
+			local _sc7 = Character and Character:FindFirstChild("HumanoidRootPart")
+			local Root = _sc7
+			if typeof(Start) ~= "Vector3" or not _sc7 then
+				return
+			end
+			if (Start - Root.Position).Magnitude > 12 then
+				return
+			end
+			ProjectileTimers[Projectile] = { Text = CreateText(14), Fuse = Fuse, Started = time() }
 		end
-	end
-	if Best then
-		Remote:FireServer("Repair", Best)
-	end
-end
-local function UpdateBubbleSphere(Name, Enabled, Center, Radius, Color, Transparency)
-	local Part = BubbleSpheres[Name]
-	if not Enabled or Unloaded then
-		if Part then
-			Set(Part, "CFrame", CFrame.new(0, -500, 0))
-		end
-		return
-	end
-	local Camera = workspace.CurrentCamera
-	if not Camera then
-		return
-	end
-	if not (Part and Part.Parent == Camera) then
-		if Part then
+		local function UntrackProjectile(Projectile)
+			local Entry = ProjectileTimers[Projectile]
+			if not Entry then
+				return
+			end
 			pcall(function()
-				Part:Destroy()
+				Entry.Text:Remove()
 			end)
+			ProjectileTimers[Projectile] = nil
 		end
-		Part = Instance.new("Part")
-		Part.Name = Name
-		Part.Shape = Enum.PartType.Ball
-		Part.Material = Enum.Material.ForceField
-		Part.Color = Color
-		Part.Anchored = true
-		Part.CanCollide = false
-		Part.CanQuery = false
-		Part.CanTouch = false
-		Part.CastShadow = false
-		Part.Parent = Camera
-		BubbleSpheres[Name] = Part
-	end
-	Set(Part, "Transparency", math.clamp(Transparency, 0.01, 1))
-	Set(Part, "Size", Vector3.new(Radius * 2, Radius * 2, Radius * 2))
-	Set(Part, "CFrame", CFrame.new(Center))
-end
-local function UpdateShoveVisual()
-	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChild("HumanoidRootPart")
-	local Root = _sc11
-	local Center
-	local Radius = 1
-	ShoveRoot = _sc11
-	if ClassConfig.ShoveShow and not Unloaded then
-		local _sc12 = Character and Character:FindFirstChildOfClass("Tool")
-		local Tool = _sc12
-		local CanShove = false
-		local Stock = 3
-		if _sc12 then
+		local function UpdateProjectileTimers(Now)
+			if not ThrowableConfig.Timer then
+				if next(ProjectileTimers) then
+					ClearProjectileTimers()
+				end
+				return
+			end
+			if Now - _rl0[25] < 1 / 30 then
+				return
+			end
+			_rl0[25] = Now
+			local Camera = workspace.CurrentCamera
+			if not Camera then
+				return
+			end
+			for Projectile, Entry in ProjectileTimers do
+				if not Projectile.Parent then
+					UntrackProjectile(Projectile)
+				else
+					local Remaining = Entry.Fuse - (Now - Entry.Started)
+					local Screen
+					if typeof(Projectile.Value) == "Vector3" then
+						Screen = Camera:WorldToViewportPoint(Projectile.Value)
+					end
+					if Screen and Remaining > 0 and Screen.Z > 0 then
+						Set(Entry.Text, "Visible", true)
+						Set(Entry.Text, "Text", string.format("%.1f", Remaining))
+						Set(Entry.Text, "Color", Remaining < 1 and TimerColorHot or TimerColorCold)
+						Set(Entry.Text, "Position", Vector2.new(Screen.X, Screen.Y - 20))
+					else
+						Set(Entry.Text, "Visible", false)
+					end
+				end
+			end
+		end
+		local MortarFuseText
+		local MortarFuse
+		_rl0[31] = 5
+		_rl0[32] = Color3.fromRGB(255, 70, 70)
+		_rl0[33] = Color3.fromRGB(255, 170, 80)
+		_rl0[34] = 0
+		local function IsFuseLit(Tool)
+			local Lit = Tool:GetAttribute("FuseLit")
+			return Lit == true or Lit == "true"
+		end
+		local function GetMortarAnchor(Tool)
+			local Reference = Tool:FindFirstChild("ModelReference")
+			local _sc6 = Reference and Reference.Value
+			local Model = _sc6
+			if _sc6 and Model.Parent then
+				local Grenade = Model:FindFirstChild("Grenade")
+				if Grenade and Grenade:IsA("Model") then
+					return Grenade:GetPivot().Position, Grenade
+				end
+				return Model:GetPivot().Position, Model
+			end
+			return nil, nil
+		end
+		local MortarHighlight
+		local MortarHighlightModel
+		local function ClearMortarHighlight()
+			if MortarHighlight then
+				pcall(function()
+					MortarHighlight:Destroy()
+				end)
+			end
+			MortarHighlight = nil
+			MortarHighlightModel = nil
+		end
+		local function UpdateMortarHighlight(Model, Remaining)
+			if not Model or not Model.Parent then
+				ClearMortarHighlight()
+				return
+			end
+			if MortarHighlightModel ~= Model then
+				ClearMortarHighlight()
+				local Highlight = Instance.new("Highlight")
+				Highlight.Name = "UmberMortarChams"
+				Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				Highlight.FillTransparency = 0.55
+				Highlight.OutlineTransparency = 0
+				Highlight.Parent = Model
+				MortarHighlight = Highlight
+				MortarHighlightModel = Model
+			end
+			local _sc7 = Remaining < 1 and _rl0[32] or _rl0[33]
+			MortarHighlight.FillColor = _sc7
+			MortarHighlight.OutlineColor = _sc7
+			MortarHighlight.Enabled = true
+		end
+		local function UpdateMortarFuse()
+			if not ThrowableConfig.MortarTimer then
+				MortarFuse = nil
+				ClearMortarHighlight()
+				if MortarFuseText then
+					Set(MortarFuseText, "Visible", false)
+				end
+				return
+			end
+			local Character = _LocalPlayer.Character
+			local _sc6 = Character and Character:FindFirstChildOfClass("Tool")
+			local Tool = _sc6
+			if not _sc6 or not IsFuseLit(Tool) then
+				MortarFuse = nil
+				ClearMortarHighlight()
+				if MortarFuseText then
+					Set(MortarFuseText, "Visible", false)
+				end
+				return
+			end
+			if not MortarFuse or MortarFuse.Tool ~= Tool then
+				MortarFuse = { Tool = Tool, Started = workspace:GetServerTimeNow() }
+			end
+			local Remaining = _rl0[31] - (workspace:GetServerTimeNow() - MortarFuse.Started)
+			if Remaining <= 0 then
+				ClearMortarHighlight()
+				if MortarFuseText then
+					Set(MortarFuseText, "Visible", false)
+				end
+				return
+			end
+			local Now = time()
+			if Now - _rl0[34] < 0.05 then
+				return
+			end
+			_rl0[34] = Now
+			if not MortarFuseText then
+				MortarFuseText = CreateText(20)
+			end
+			local Camera = workspace.CurrentCamera
+			if not Camera then
+				return
+			end
+			local Center = Camera.ViewportSize * 0.5
+			local Position = Vector2.new(Center.X, Center.Y + 70)
+			local Anchor, Model = GetMortarAnchor(Tool)
+			UpdateMortarHighlight(Model, Remaining)
+			if Anchor then
+				local Screen, OnScreen = Camera:WorldToViewportPoint(Anchor)
+				if OnScreen then
+					Position = Vector2.new(Screen.X, Screen.Y)
+				end
+			end
+			Set(MortarFuseText, "Visible", true)
+			Set(MortarFuseText, "Text", string.format("%.1f", Remaining))
+			local _sc10 = Remaining < 1
+			if _sc10 then
+				local _t6223 = Set
+				local _t6224 = MortarFuseText
+				_sc10 = _rl0[32]
+			end
+			local _sc9 = _sc10
+			if not _sc10 then
+				local _t6223 = Set
+				local _t6224 = MortarFuseText
+				_sc9 = _rl0[33]
+			end
+			Set(MortarFuseText, "Color", _sc9)
+			Set(MortarFuseText, "Position", Position)
+		end
+		local function EnsureTrajectoryLines()
+			if TrajectoryLines then
+				return TrajectoryLines
+			end
+			TrajectoryLines = {}
+			for Index = 1, TrajectorySegments do
+				local Line = Drawing.new("Line")
+				Line.Thickness = 2
+				Line.Visible = false
+				TrajectoryLines[Index] = Line
+			end
+			TrajectoryMark = Drawing.new("Square")
+			TrajectoryMark.Filled = true
+			TrajectoryMark.Thickness = 1
+			TrajectoryMark.Visible = false
+			return TrajectoryLines
+		end
+		local function HideTrajectory()
+			if TrajectoryMark then
+				Set(TrajectoryMark, "Visible", false)
+			end
+			if not TrajectoryLines then
+				return
+			end
+			for Index = 1, TrajectorySegments do
+				Set(TrajectoryLines[Index], "Visible", false)
+			end
+		end
+		local function ProjectTrajectory(Camera, From, To)
+			local ScreenFrom = Camera:WorldToViewportPoint(From)
+			local ScreenTo = Camera:WorldToViewportPoint(To)
+			if ScreenFrom.Z <= 0 and ScreenTo.Z <= 0 then
+				return nil
+			end
+			if ScreenFrom.Z <= 0 then
+				local Delta = ScreenTo.Z - ScreenFrom.Z
+				if Delta <= 0.001 then
+					return nil
+				end
+				ScreenFrom = Camera:WorldToViewportPoint(From:Lerp(To, math.clamp((0.05 - ScreenFrom.Z) / Delta, 0, 1)))
+			elseif ScreenTo.Z <= 0 then
+				local Delta = ScreenFrom.Z - ScreenTo.Z
+				if Delta <= 0.001 then
+					return nil
+				end
+				ScreenTo = Camera:WorldToViewportPoint(To:Lerp(From, math.clamp((0.05 - ScreenTo.Z) / Delta, 0, 1)))
+			end
+			return Vector2.new(ScreenFrom.X, ScreenFrom.Y), Vector2.new(ScreenTo.X, ScreenTo.Y)
+		end
+		local function SolveThrow(Start, Target, Speed)
+			local DeltaX = Target.X - Start.X
+			local DeltaZ = Target.Z - Start.Z
+			local DeltaY = Target.Y - Start.Y
+			local Flat = DeltaX * DeltaX + DeltaZ * DeltaZ
+			local Gravity = -workspace.Gravity
+			local Speed2 = Speed * Speed
+			if Flat <= 0 then
+				local Vector3_new = Vector3.new
+				local _sc7 = DeltaY < 0 and -Speed
+				return Vector3_new(0, _sc7 or DeltaY > 0 and Speed or 0, 0)
+			end
+			local Scale = Flat / (2 * (Flat + DeltaY * DeltaY))
+			local Root = Speed2 * (2 * Gravity * DeltaY + Speed2) - Gravity * Gravity * Flat
+			if Root <= 0 then
+				return nil
+			end
+			local SqrtRoot = math.sqrt(Root)
+			local High = Scale * (Gravity * DeltaY + Speed2 + SqrtRoot)
+			if High < 0 or Speed2 - High < 0 then
+				return nil
+			end
+			local FlatRoot = math.sqrt(Flat)
+			local Vertical = math.sqrt(Speed2 - High)
+			if not (Gravity * Flat / (2 * Speed2) < DeltaY) then
+				Vertical = -Vertical
+			end
+			return Vector3.new(DeltaX / FlatRoot * math.sqrt(High), Vertical, DeltaZ / FlatRoot * math.sqrt(High))
+		end
+		local TrajectoryColor = Color3.fromRGB(255, 170, 80)
+		local TrajectoryColorEnd = Color3.fromRGB(255, 240, 170)
+		_rl0[35] = 0
+		local function IsThrowableTool(Tool)
+			if _rl0[29][Tool.Name] or LearnedThrowSpeed[Tool.Name] then
+				return true
+			end
+			local Configuration = Tool:FindFirstChild("Configuration")
+			if not Configuration then
+				return false
+			end
+			for _, Name in ipairs(_rl0[28]) do
+				if Configuration:GetAttribute(Name) ~= nil then
+					return true
+				end
+			end
+			return false
+		end
+		local function GetThrowSpeed(Tool)
+			if not IsThrowableTool(Tool) then
+				return nil
+			end
 			local Configuration = Tool:FindFirstChild("Configuration")
 			if Configuration then
-				local Ok, Value = pcall(function()
-					return Configuration:GetAttribute("CanShove")
-				end)
-				if Ok and Value then
-					CanShove = true
-					local OkRadius, Radius = pcall(function()
-						return Configuration:GetAttribute("ShoveHitboxRadius")
-					end)
-					if OkRadius and typeof(Radius) == "number" then
-						Stock = Radius
+				for _, Name in ipairs(_rl0[27]) do
+					local Value = Configuration:GetAttribute(Name)
+					if typeof(Value) == "number" and Value >= 10 then
+						return Value
 					end
 				end
 			end
+			return LearnedThrowSpeed[Tool.Name] or 55
 		end
-		if CanShove and Root then
-			Radius = ClassConfig.ShoveExpander and math.max(Stock, ClassConfig.ShoveRadius) or Stock
-			Center = Root.Position + Root.CFrame.LookVector * 2
-		end
-	end
-	local _sc12 = Center
-	if not Center then
-		local UpdateBubbleSphere_v1 = UpdateBubbleSphere
-		_sc12 = Vector3.zero
-	end
-	UpdateBubbleSphere("UmberShoveHitbox", Center ~= nil, _sc12, Radius, Color3.fromRGB(255, 90, 90), ClassConfig.ShoveTransparency / 100)
-end
-local function GetKillAuraRange()
-	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChildOfClass("Tool")
-	local Tool = _sc11
-	local Limit = 5
-	if _sc11 then
-		local Configuration = Tool:FindFirstChild("Configuration")
-		if Configuration then
-			local Ok, Value = pcall(function()
-				return Configuration:GetAttribute("LimitRange")
-			end)
-			if Ok and typeof(Value) == "number" and Value > 0 then
-				Limit = Value
+		local MobilePlayer
+		_rl0[36] = 0
+		local function IsMobilePlayer()
+			local Now = time()
+			if MobilePlayer ~= nil and Now - _rl0[36] < 2 then
+				return MobilePlayer
 			end
+			_rl0[36] = Now
+			MobilePlayer = _LocalPlayer:GetAttribute("Mobile") == true
+			if not MobilePlayer then
+				local PlayerGui = _LocalPlayer:FindFirstChildOfClass("PlayerGui")
+				MobilePlayer = PlayerGui ~= nil and PlayerGui:FindFirstChild("MobileGui") ~= nil
+			end
+			if not MobilePlayer then
+				MobilePlayer = _UserInputService.TouchEnabled and not _UserInputService.MouseEnabled
+			end
+			return MobilePlayer
 		end
-	end
-	return math.min(KillAuraConfig.Range, Limit)
-end
-local function UpdateKillAuraVisual()
-	local Character = _LocalPlayer.Character
-	local _sc11 = Character and Character:FindFirstChild("HumanoidRootPart")
-	local Root = _sc11
-	if not _sc11 or Unloaded then
-		UpdateBubbleSphere("UmberKillAura", false, Vector3.zero, 1, Color3.fromRGB(170, 90, 255), 0.9)
-		return
-	end
-	UpdateBubbleSphere("UmberKillAura", KillAuraConfig.Show, Root.Position, math.max(GetKillAuraRange(), 0.5), Color3.fromRGB(170, 90, 255), 0.9)
-end
-_rl0[38] = 0
-local function CollectKillAuraTargets(Character, Root, Tool)
-	local _sc11 = Tool and Tool:FindFirstChild("RemoteEvent")
-	local Remote = _sc11
-	if not _sc11 then
-		return nil, nil, nil
-	end
-	local Container = workspace:FindFirstChild("Zombies")
-	if not Container then
-		return nil, nil, nil
-	end
-	local Origin = Root.Position
-	local Range = GetKillAuraRange()
-	local Targets = {}
-	for _, Model in ipairs(Container:GetChildren()) do
-		local ZombieHumanoid = Model:FindFirstChildOfClass("Humanoid")
-		if not (ZombieHumanoid and ZombieHumanoid.Health > 0) then
-			continue
+		local function GetThrowOrigin(Tool, Character)
+			local Ref = Tool:FindFirstChild("HandleWeldRef")
+			if Ref and Ref:IsA("ObjectValue") then
+				local Weld = Ref.Value
+				if Weld and Weld.Part1 then
+					return Weld.Part1
+				end
+			end
+			local _sc7_s1 = Character:FindFirstChild("RightHand") or Character:FindFirstChild("Right Arm")
+			return _sc7_s1 or Character:FindFirstChild("HumanoidRootPart")
 		end
-		local Ref = Model:FindFirstChild("ClientRef")
-		local _sc13 = Ref and Ref:IsA("ObjectValue") and Ref.Value
-		local Visual = _sc13
-		if not _sc13 then
-			continue
-		end
-		local Group = KillAuraConfig.Part ~= "All" and KillAuraPartGroups[KillAuraConfig.Part] or nil
-		local BestPart, BestDistance
-		for _, Part in ipairs(Visual:GetDescendants()) do
-			if Part:IsA("BasePart") and Part.Transparency < 0.95 then
-				if not Group or Group[Part.Name] then
-					local Distance = (Part.Position - Origin).Magnitude
-					if Distance > 0.5 then
-						if not BestDistance or Distance < BestDistance then
-							BestPart = Part
-							BestDistance = Distance
-						end
+		local function UpdateTrajectory()
+			if not ThrowableConfig.Trajectory then
+				HideTrajectory()
+				return
+			end
+			local Now = time()
+			if Now - _rl0[35] < 1 / 30 then
+				return
+			end
+			_rl0[35] = Now
+			local Character = _LocalPlayer.Character
+			local _sc6 = Character and Character:FindFirstChildOfClass("Tool")
+			local Tool = _sc6
+			local Camera = workspace.CurrentCamera
+			if not _sc6 or not Camera then
+				HideTrajectory()
+				return
+			end
+			local Speed = GetThrowSpeed(Tool)
+			if not Speed then
+				HideTrajectory()
+				return
+			end
+			local Origin = GetThrowOrigin(Tool, Character)
+			if not Origin then
+				HideTrajectory()
+				return
+			end
+			local Velocity
+			if IsMobilePlayer() then
+				Velocity = Camera.CFrame.LookVector * Speed
+			else
+				local Target = _rl0[30].Hit.Position
+				if typeof(Target) ~= "Vector3" then
+					HideTrajectory()
+					return
+				end
+				Velocity = SolveThrow(Origin.Position, Target, Speed)
+				if not Velocity then
+					local Direction = Target - Origin.Position
+					if Direction.Magnitude < 0.1 then
+						Direction = Camera.CFrame.LookVector
 					end
+					Velocity = Direction.Unit * Speed
+				end
+			end
+			local Lines = EnsureTrajectoryLines()
+			local Gravity = Vector3.new(0, -workspace.Gravity, 0)
+			local Point = Origin.Position
+			local Step = _rl0[26]
+			local Count = 0
+			local Hit = false
+			ThrowIgnore[1] = Character
+			ThrowIgnore[2] = Camera
+			ThrowFilter.FilterDescendantsInstances = ThrowIgnore
+			for Index = 1, TrajectorySegments do
+				local Next = Point + Velocity * Step + Gravity * (0.5 * Step * Step)
+				local Result = workspace:Raycast(Point, Next - Point, ThrowFilter)
+				Velocity += Gravity * Step
+				if Result then
+					Next = Result.Position
+					Hit = true
+				end
+				local ScreenFrom, ScreenTo = ProjectTrajectory(Camera, Point, Next)
+				local Line = Lines[Index]
+				local Alpha = Index / TrajectorySegments
+				if ScreenFrom then
+					Set(Line, "Visible", true)
+					Set(Line, "Color", TrajectoryColor:Lerp(TrajectoryColorEnd, Alpha))
+					Set(Line, "Thickness", 3 - Alpha * 1.5)
+					Set(Line, "From", ScreenFrom)
+					Set(Line, "To", ScreenTo)
+				else
+					Set(Line, "Visible", false)
+				end
+				Count = Index
+				Point = Next
+				if Result then
+					break
+				end
+			end
+			for Index = Count + 1, TrajectorySegments do
+				Set(Lines[Index], "Visible", false)
+			end
+			if TrajectoryMark then
+				local Screen = Camera:WorldToViewportPoint(Point)
+				if Screen.Z > 0 then
+					local Size = Hit and 9 or 5
+					Set(TrajectoryMark, "Visible", true)
+					Set(TrajectoryMark, "Color", TrajectoryColorEnd)
+					Set(TrajectoryMark, "Transparency", Hit and 0.05 or 0.5)
+					Set(TrajectoryMark, "Position", Vector2.new(Screen.X - Size * 0.5, Screen.Y - Size * 0.5))
+					Set(TrajectoryMark, "Size", Vector2.new(Size, Size))
+				else
+					Set(TrajectoryMark, "Visible", false)
 				end
 			end
 		end
-		if BestPart and BestDistance <= Range then
-			table.insert(Targets, { Model = Model, Part = BestPart, Distance = BestDistance })
+		local function UpdateThrowables()
+			if Unloaded then
+				return
+			end
+			local Now = time()
+			UpdateProjectileTimers(Now)
+			UpdateMortarFuse()
+			UpdateTrajectory()
 		end
-	end
-	table.sort(Targets, function(A, B)
-		return A.Distance < B.Distance
-	end)
-	return Remote, Targets, Container
-end
-local function SendKillAuraHits(Character, Root, Remote, Container, Targets, Cap)
-	local Origin = Root.Position
-	local Sent = 0
-	for _, Target in ipairs(Targets) do
-		if Sent >= Cap then
-			break
-		end
-		local Pos = Target.Part.Position
-		local Direction = (Pos - Origin).Unit
-		local OkBlock, Blocked = pcall(function()
-			local RayParams = RaycastParams.new()
-			RayParams.FilterType = Enum.RaycastFilterType.Exclude
-			RayParams.FilterDescendantsInstances = { Character, Container, workspace.CurrentCamera }
-			return workspace:Raycast(Origin, Direction * Target.Distance, RayParams) ~= nil
+		task.spawn(function()
+			local Folder = workspace:WaitForChild("Projectiles", 60)
+			if Unloaded or not Folder then
+				return
+			end
+			Track(Folder.ChildAdded:Connect(TrackProjectile))
+			Track(Folder.ChildRemoved:Connect(UntrackProjectile))
 		end)
-		if OkBlock and not Blocked then
-			pcall(function()
-				Remote:FireServer("HitZombieM", Target.Model, Pos, Target.Part.Name == "Head", Direction * 25, Target.Part.Name, -Direction)
-			end)
-			Sent += 1
-		end
-	end
-end
-local function UpdateKillAura()
-	if not KillAuraConfig.Enabled or Unloaded then
-		return
-	end
-	local Character = _LocalPlayer.Character
-	local Root = Character and Character:FindFirstChild("HumanoidRootPart")
-	local _sc12 = Character and Character:FindFirstChildOfClass("Humanoid")
-	local Humanoid = _sc12
-	if not Root or not _sc12 or Humanoid.Health <= 0 then
-		return
-	end
-	local Tool = Character:FindFirstChildOfClass("Tool")
-	if not Tool then
-		return
-	end
-	local IsMelee = MeleeToolCache[Tool]
-	if IsMelee == nil then
-		IsMelee = IsMeleeTool(Tool)
-		MeleeToolCache[Tool] = IsMelee
-	end
-	if not IsMelee then
-		return
-	end
-	local Now = tick()
-	local Interval = 0.5
-	local Cap = 5
-	local Configuration = Tool:FindFirstChild("Configuration")
-	if Configuration then
-		local OkDeal, Deal = pcall(function()
-			return Configuration:GetAttribute("DealTime")
-		end)
-		local OkSwing, Swing = pcall(function()
-			return Configuration:GetAttribute("SwingTime")
-		end)
-		local OkHits, Hits = pcall(function()
-			return Configuration:GetAttribute("MaxHits")
-		end)
-		if OkDeal and typeof(Deal) == "number" then
-			Interval = Deal
-		end
-		if OkSwing and typeof(Swing) == "number" and Swing > Interval then
-			Interval = Swing
-		end
-		if OkHits and typeof(Hits) == "number" and Hits > 0 then
-			Cap = math.floor(Hits)
-		end
-	end
-	Interval = Interval / math.max(KillAuraConfig.Speed, 0.05)
-	if Interval < 0.1 then
-		Interval = 0.1
-	end
-	if Now - _rl0[38] < Interval then
-		return
-	end
-	_rl0[38] = Now
-	local Remote = CollectKillAuraTargets(Character, Root, Tool)
-	if not Remote then
-		return
-	end
-	pcall(function()
-		Remote:FireServer("PrepareSwing")
-	end)
-	task.delay(0.2, function()
-		local _sc14 = Unloaded
-		if if Unloaded then _sc14 else not KillAuraConfig.Enabled then
-			return
-		end
-		local FreshCharacter = _LocalPlayer.Character
-		local FreshRoot = FreshCharacter and FreshCharacter:FindFirstChild("HumanoidRootPart")
-		local _sc16 = FreshCharacter and FreshCharacter:FindFirstChildOfClass("Tool")
-		local FreshTool = _sc16
-		if not FreshRoot or not _sc16 or not IsMeleeTool(FreshTool) then
-			return
-		end
-		pcall(function()
-			Remote:FireServer("Swing", "Thrust")
-		end)
-		local FreshRemote, FreshTargets, FreshContainer = CollectKillAuraTargets(FreshCharacter, FreshRoot, FreshTool)
-		if FreshRemote and FreshTargets then
-			SendKillAuraHits(FreshCharacter, FreshRoot, FreshRemote, FreshContainer, FreshTargets, Cap)
-		end
-	end)
-end
-local SurgeonState = { Target = nil, Path = nil, Waypoints = nil, Index = 1, Goal = nil, RepathAt = 0, HealAt = 0,
-	HealTarget = nil, HealHealth = nil, Threats = nil, ThreatsAt = 0, SuppliesAt = 0
-}
-do
-	local function UpdateSuppliesESP()
-		local Now = os.clock()
-		if Now - SurgeonState.SuppliesAt < 0.4 then
-			return
-		end
-		SurgeonState.SuppliesAt = Now
-		local Enabled = SurgeonConfig.SuppliesESP
-		for Part, Highlight in SupplyHighlights do
-			if not Enabled or not Part.Parent then
+		local BubbleSpheres = {}
+		local function Cleanup()
+			Unloaded = true
+			SendUserCount("left")
+			for _, Connection in Connections do
+				if Connection.Connected then
+					Connection:Disconnect()
+				end
+			end
+			table.clear(Connections)
+			for _, Entry in Tracked do
+				DestroyEntry(Entry)
+			end
+			for _, Entry in SurgeonTracked do
+				DestroyEntry(Entry)
+			end
+			for _, Highlight in SupplyHighlights do
 				pcall(function()
 					Highlight:Destroy()
 				end)
-				SupplyHighlights[Part] = nil
 			end
-		end
-		if not Enabled then
-			return
-		end
-		local Color = SurgeonConfig.SuppliesColor
-		for _, Part in workspace:GetChildren() do
-			if Part.Name == "SupplyVisualizer" and Part:IsA("BasePart") then
-				local Highlight = SupplyHighlights[Part]
-				if not Highlight or not Highlight.Parent then
-					Highlight = Instance.new("Highlight")
-					Highlight.Name = "UmberSupplies"
-					Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-					Highlight.FillTransparency = 0.45
-					Highlight.OutlineTransparency = 0
-					Highlight.Parent = Part
-					SupplyHighlights[Part] = Highlight
+			table.clear(SupplyHighlights)
+			table.clear(SurgeonTracked)
+			table.clear(Tracked)
+			table.clear(Visuals)
+			table.clear(FuseMarks)
+			ESPEMA = 0
+			LastESPStep = 1
+			LastESPInterval = 1 / 30
+			ClearHitboxVisuals()
+			RemoveHitboxHook()
+			ClearProjectileTimers()
+			HideTrajectory()
+			ClearMortarHighlight()
+			MortarFuse = nil
+			if MortarFuseText then
+				pcall(function()
+					MortarFuseText:Remove()
+				end)
+				MortarFuseText = nil
+			end
+			for Model in BlastSpheres do
+				DestroyBlastSphere(Model)
+			end
+			for _, Circle in FOVCircles do
+				pcall(function()
+					Circle:Remove()
+				end)
+			end
+			table.clear(FOVCircles)
+			for _, Part in BubbleSpheres do
+				pcall(function()
+					Part:Destroy()
+				end)
+			end
+			table.clear(BubbleSpheres)
+			RestoreWorldLighting()
+			if TrajectoryLines then
+				for _, Line in TrajectoryLines do
+					pcall(function()
+						Line:Remove()
+					end)
 				end
-				Highlight.FillColor = Color
-				Highlight.OutlineColor = Color
-				Highlight.Enabled = true
+				TrajectoryLines = nil
 			end
+			ClearChargeSpeed()
+			ClearSwingBuffs()
+			if TargetChams then
+				pcall(function()
+					TargetChams:Destroy()
+				end)
+				TargetChams = nil
+			end
+			SilentTargetModel = nil
+			local Character = _LocalPlayer.Character
+			if Character then
+				pcall(function()
+					Character:SetAttribute("SwingSpeedScalar", nil)
+				end)
+			end
+			getgenv().UmberUnload = nil
 		end
-	end
-	local function SurgeonTarget()
-		local Character = _LocalPlayer.Character
-		local _sc11 = Character and Character:FindFirstChild("HumanoidRootPart")
-		local Root = _sc11
-		local Container = workspace:FindFirstChild("Players")
-		if not (_sc11 and Container) then
-			return nil
+		do
+			local function BindCharacter()
+				SpeedModifier = nil
+				ApplySwingSpeed()
+				ApplyChargeSpeed()
+				local Character = _LocalPlayer.Character
+				if Character then
+					Track(Character.ChildAdded:Connect(function(Child)
+						if Child:IsA("Tool") then
+							ApplySwingSpeed()
+						end
+					end))
+					task.spawn(function()
+						local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+						local Deadline = tick() + 10
+						while not Humanoid and tick() < Deadline do
+							task.wait(0.1)
+							Humanoid = Character:FindFirstChildOfClass("Humanoid")
+						end
+						if not Humanoid then
+							return
+						end
+						local Animator = Humanoid:FindFirstChildOfClass("Animator")
+						local Deadline_s1 = tick() + 10
+						while not Animator and tick() < Deadline_s1 do
+							task.wait(0.1)
+							Animator = Humanoid:FindFirstChildOfClass("Animator")
+						end
+						if not Animator then
+							return
+						end
+						Track(Animator.AnimationPlayed:Connect(function(SwingTrack)
+							if not LegitConfig.AutoJump then
+								return
+							end
+							local _sc8 = SwingTrack and SwingTrack.Name
+							if _sc8 ~= "SwingRight" and _sc8 ~= "SwingDown" and _sc8 ~= "Thrust" then
+								return
+							end
+							local Tool = Character:FindFirstChildOfClass("Tool")
+							if not Tool then
+								return
+							end
+							local IsMelee = MeleeToolCache[Tool]
+							if IsMelee == nil then
+								IsMelee = IsMeleeTool(Tool)
+								MeleeToolCache[Tool] = IsMelee
+							end
+							if not IsMelee then
+								return
+							end
+							local _sc9_s1 = not Humanoid or Humanoid.Health <= 0
+							if _sc9_s1 or Humanoid.FloorMaterial == Enum.Material.Air then
+								return
+							end
+							local OkPower, CurrentPower = pcall(function()
+								return Humanoid.JumpPower
+							end)
+							local _sc11_s1 = not OkPower or typeof(CurrentPower) ~= "number"
+							local _sc12 = _sc11_s1 or CurrentPower <= 0
+							local WasZero = _sc12
+							if _sc12 then
+								pcall(function()
+									Humanoid.JumpPower = 30
+								end)
+							end
+							Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+							if WasZero then
+								task.delay(0.15, function()
+									pcall(function()
+										Humanoid.JumpPower = 0
+									end)
+								end)
+							end
+						end))
+					end)
+				end
+			end
+			Track(_LocalPlayer.CharacterAdded:Connect(BindCharacter))
+			BindCharacter()
 		end
-		local Best
-		local BestScore = math.huge
-		local RootPos = Root.Position
-		local Limit = SurgeonConfig.MaxDistance
-		for _, Model in ipairs(Container:GetChildren()) do
-			if Model:IsA("Model") and Model ~= Character then
-				local Humanoid = Model:FindFirstChildOfClass("Humanoid")
-				local TargetRoot = Model:FindFirstChild("HumanoidRootPart")
-				if Humanoid and TargetRoot and Humanoid.Health > 0 and Humanoid.Health < Humanoid.MaxHealth then
-					local Distance = (TargetRoot.Position - RootPos).Magnitude
-					if Distance <= Limit then
-						local Score = Humanoid.Health / math.max(Humanoid.MaxHealth, 1) * 100 + Distance * 0.15
-						if Score < BestScore then
-							BestScore = Score
-							Best = { Model = Model, Humanoid = Humanoid, Root = TargetRoot }
+		_rl0[37] = 0
+		do
+			local function UpdateAutoBuild()
+				if not ClassConfig.AutoBuild or Unloaded then
+					return
+				end
+				local Now = tick()
+				if Now - _rl0[37] < 0.5 then
+					return
+				end
+				_rl0[37] = Now
+				local Character = _LocalPlayer.Character
+				local _sc6 = Character and Character:FindFirstChild("HumanoidRootPart")
+				local Root = _sc6
+				if not _sc6 then
+					return
+				end
+				local Backpack = _LocalPlayer:FindFirstChild("Backpack")
+				local _sc7 = Backpack and Backpack:FindFirstChild("Hammer") or Character:FindFirstChild("Hammer")
+				local Hammer = _sc7
+				if not _sc7 then
+					return
+				end
+				local Remote = Hammer:FindFirstChild("RemoteEvent")
+				if not Remote then
+					return
+				end
+				local Container = workspace:FindFirstChild("Buildings")
+				if not Container then
+					return
+				end
+				local RootPos = Root.Position
+				local Best
+				local BestKey = math.huge
+				for _, Health in ipairs(Container:GetDescendants()) do
+					if not (Health.Name == "BuildingHealth" or Health.Name == "ConstructHealth") then
+						continue
+					end
+					local Building = Health.Parent
+					if not Building then
+						continue
+					end
+					local Hitbox = Building:FindFirstChild("Hitbox")
+					local Anchor = Hitbox or Building
+					local Ok, Pos = pcall(function()
+						if Anchor:IsA("BasePart") then
+							return Anchor.Position
+						end
+						return Anchor:GetPivot().Position
+					end)
+					if Ok and Pos then
+						local Distance = (Pos - RootPos).Magnitude
+						if Distance <= 15 then
+							local Key = Distance
+							if ClassConfig.BuildPriority == "Lowest Health Building" then
+								local OkValue, Value = pcall(function()
+									return Health.Value
+								end)
+								local OkMax, Max = pcall(function()
+									return Health:GetAttribute("MaxHealth")
+								end)
+								if OkValue
+									and typeof(Value) == "number"
+									and OkMax
+									and typeof(Max) == "number"
+									and Max > 0
+								then
+									if Value >= Max then
+										continue
+									end
+									Key = Value / Max
+								end
+							end
+							if Key < BestKey then
+								BestKey = Key
+								Best = Health
+							end
 						end
 					end
 				end
+				if Best then
+					Remote:FireServer("Repair", Best)
+				end
 			end
-		end
-		return Best
-	end
-	local function SurgeonThreats()
-		local Container = workspace:FindFirstChild("Zombies")
-		if not Container then
-			return nil
-		end
-		local Threats = {}
-		for _, Model in ipairs(Container:GetChildren()) do
-			local Humanoid = Model:FindFirstChildOfClass("Humanoid")
-			if Humanoid and Humanoid.Health > 0 then
-				local OkPos, Position = pcall(function()
-					return Model:GetPivot().Position
-				end)
-				if OkPos and Position then
-					local Kind = Model:GetAttribute("Type")
-					local Radius = 10
-					if Kind == "Barrel" then
-						local Blast = Model:GetAttribute("BlastRadius")
-						Radius = if typeof(Blast) == "number" then Blast + 4 else 13
+			local function UpdateBubbleSphere(Name, Enabled, Center, Radius, Color, Transparency)
+				local Part = BubbleSpheres[Name]
+				if not Enabled or Unloaded then
+					if Part then
+						Set(Part, "CFrame", CFrame.new(0, -500, 0))
 					end
-					table.insert(Threats, { Model = Model, Type = Kind, Position = Position, Radius = Radius })
+					return
+				end
+				local Camera = workspace.CurrentCamera
+				if not Camera then
+					return
+				end
+				if not (Part and Part.Parent == Camera) then
+					if Part then
+						pcall(function()
+							Part:Destroy()
+						end)
+					end
+					Part = Instance.new("Part")
+					Part.Name = Name
+					Part.Shape = Enum.PartType.Ball
+					Part.Material = Enum.Material.ForceField
+					Part.Color = Color
+					Part.Anchored = true
+					Part.CanCollide = false
+					Part.CanQuery = false
+					Part.CanTouch = false
+					Part.CastShadow = false
+					Part.Parent = Camera
+					BubbleSpheres[Name] = Part
+				end
+				Set(Part, "Transparency", math.clamp(Transparency, 0.01, 1))
+				Set(Part, "Size", Vector3.new(Radius * 2, Radius * 2, Radius * 2))
+				Set(Part, "CFrame", CFrame.new(Center))
+			end
+			local function UpdateShoveVisual()
+				local Character = _LocalPlayer.Character
+				local _sc6 = Character and Character:FindFirstChild("HumanoidRootPart")
+				local Root = _sc6
+				local Center
+				local Radius = 1
+				ShoveRoot = _sc6
+				if ClassConfig.ShoveShow and not Unloaded then
+					local _sc7 = Character and Character:FindFirstChildOfClass("Tool")
+					local Tool = _sc7
+					local CanShove = false
+					local Stock = 3
+					if _sc7 then
+						local Configuration = Tool:FindFirstChild("Configuration")
+						if Configuration then
+							local Ok, Value = pcall(function()
+								return Configuration:GetAttribute("CanShove")
+							end)
+							if Ok and Value then
+								CanShove = true
+								local OkRadius, Radius = pcall(function()
+									return Configuration:GetAttribute("ShoveHitboxRadius")
+								end)
+								if OkRadius and typeof(Radius) == "number" then
+									Stock = Radius
+								end
+							end
+						end
+					end
+					if CanShove and Root then
+						Radius = ClassConfig.ShoveExpander and math.max(Stock, ClassConfig.ShoveRadius) or Stock
+						Center = Root.Position + Root.CFrame.LookVector * 2
+					end
+				end
+				UpdateBubbleSphere("UmberShoveHitbox", Center ~= nil, Center or Vector3.zero, Radius, Color3.fromRGB(255, 90, 90), ClassConfig.ShoveTransparency / 100)
+			end
+			local function GetKillAuraRange()
+				local Character = _LocalPlayer.Character
+				local _sc6 = Character and Character:FindFirstChildOfClass("Tool")
+				local Tool = _sc6
+				local Limit = 5
+				if _sc6 then
+					local Configuration = Tool:FindFirstChild("Configuration")
+					if Configuration then
+						local Ok, Value = pcall(function()
+							return Configuration:GetAttribute("LimitRange")
+						end)
+						if Ok and typeof(Value) == "number" and Value > 0 then
+							Limit = Value
+						end
+					end
+				end
+				return math.min(KillAuraConfig.Range, Limit)
+			end
+			local function UpdateKillAuraVisual()
+				local Character = _LocalPlayer.Character
+				local _sc6 = Character and Character:FindFirstChild("HumanoidRootPart")
+				local Root = _sc6
+				if not _sc6 or Unloaded then
+					UpdateBubbleSphere("UmberKillAura", false, Vector3.zero, 1, Color3.fromRGB(170, 90, 255), 0.9)
+					return
+				end
+				UpdateBubbleSphere("UmberKillAura", KillAuraConfig.Show, Root.Position, math.max(GetKillAuraRange(), 0.5), Color3.fromRGB(170, 90, 255), 0.9)
+			end
+			_rl0[38] = 0
+			local function CollectKillAuraTargets(Character, Root, Tool)
+				local _sc6 = Tool and Tool:FindFirstChild("RemoteEvent")
+				local Remote = _sc6
+				if not _sc6 then
+					return nil, nil, nil
+				end
+				local Container = workspace:FindFirstChild("Zombies")
+				if not Container then
+					return nil, nil, nil
+				end
+				local Origin = Root.Position
+				local Range = GetKillAuraRange()
+				local Targets = {}
+				for _, Model in ipairs(Container:GetChildren()) do
+					local ZombieHumanoid = Model:FindFirstChildOfClass("Humanoid")
+					if not (ZombieHumanoid and ZombieHumanoid.Health > 0) then
+						continue
+					end
+					local Ref = Model:FindFirstChild("ClientRef")
+					local _sc8 = Ref and Ref:IsA("ObjectValue") and Ref.Value
+					local Visual = _sc8
+					if not _sc8 then
+						continue
+					end
+					local Group = KillAuraConfig.Part ~= "All" and KillAuraPartGroups[KillAuraConfig.Part] or nil
+					local BestPart, BestDistance
+					for _, Part in ipairs(Visual:GetDescendants()) do
+						if Part:IsA("BasePart") and Part.Transparency < 0.95 then
+							if not Group or Group[Part.Name] then
+								local Distance = (Part.Position - Origin).Magnitude
+								if Distance > 0.5 then
+									if not BestDistance or Distance < BestDistance then
+										BestPart = Part
+										BestDistance = Distance
+									end
+								end
+							end
+						end
+					end
+					if BestPart and BestDistance <= Range then
+						table.insert(Targets, { Model = Model, Part = BestPart, Distance = BestDistance })
+					end
+				end
+				table.sort(Targets, function(A, B)
+					return A.Distance < B.Distance
+				end)
+				return Remote, Targets, Container
+			end
+			local function SendKillAuraHits(Character, Root, Remote, Container, Targets, Cap)
+				local Origin = Root.Position
+				local Sent = 0
+				for _, Target in ipairs(Targets) do
+					if Sent >= Cap then
+						break
+					end
+					local Pos = Target.Part.Position
+					local Direction = (Pos - Origin).Unit
+					local OkBlock, Blocked = pcall(function()
+						local RayParams = RaycastParams.new()
+						RayParams.FilterType = Enum.RaycastFilterType.Exclude
+						RayParams.FilterDescendantsInstances = { Character, Container, workspace.CurrentCamera }
+						return workspace:Raycast(Origin, Direction * Target.Distance, RayParams) ~= nil
+					end)
+					if OkBlock and not Blocked then
+						pcall(function()
+							Remote:FireServer("HitZombieM", Target.Model, Pos, Target.Part.Name == "Head", Direction * 25, Target.Part.Name, -Direction)
+						end)
+						Sent += 1
+					end
 				end
 			end
-		end
-		return Threats
-	end
-	local function SurgeonSteer(Goal, Threats)
-		if not SurgeonConfig.Avoid or not Threats then
-			return Goal
-		end
-		local Steer = Goal
-		for _, Threat in ipairs(Threats) do
-			local Offset = Steer - Threat.Position
-			local Distance = Offset.Magnitude
-			if Distance < Threat.Radius then
-				if Distance < 0.1 then
-					Offset = Vector3.new(1, 0, 0)
+			local function UpdateKillAura()
+				if not KillAuraConfig.Enabled or Unloaded then
+					return
 				end
-				Steer = Threat.Position + Offset.Unit * Threat.Radius
-			end
-		end
-		return Steer
-	end
-	local function SurgeonPath(Root, Goal)
-		local Path = SurgeonState.Path
-		if not Path then
-			local OkPath, Created = pcall(function()
-				return _rl0[8]:CreatePath({ AgentRadius = 2, AgentHeight = 5, AgentCanJump = true, AgentJumpHeight = 7, AgentMaxSlope = 50 })
-			end)
-			if not OkPath or not Created then
-				return nil
-			end
-			Path = Created
-			SurgeonState.Path = Path
-		end
-		local Ok = pcall(function()
-			Path:ComputeAsync(Root.Position, Goal)
-		end)
-		if not Ok or Path.Status ~= Enum.PathStatus.Success then
-			return nil
-		end
-		return Path:GetWaypoints()
-	end
-	local function SurgeonMoveLegit(Root, Humanoid, Target)
-		local Now = os.clock()
-		if Now - SurgeonState.ThreatsAt >= 0.25 then
-			SurgeonState.ThreatsAt = Now
-			SurgeonState.Threats = SurgeonThreats()
-		end
-		local Threats = SurgeonState.Threats
-		local Goal = Target.Root.Position
-		if (Goal - Root.Position).Magnitude <= 2.2 then
-			Humanoid:MoveTo(Root.Position)
-			return
-		end
-		local Shift = SurgeonState.Goal and (Goal - SurgeonState.Goal).Magnitude or math.huge
-		local Waypoints
-		local _sc13_s1 = not SurgeonState.Waypoints or Now - SurgeonState.RepathAt >= 0.5
-		if _sc13_s1 or Shift > 4 then
-			SurgeonState.RepathAt = Now
-			SurgeonState.Goal = Goal
-			Waypoints = SurgeonPath(Root, SurgeonSteer(Goal, Threats))
-			if Waypoints then
-				SurgeonState.Waypoints = Waypoints
-				SurgeonState.Index = 2
-			else
-				SurgeonState.Waypoints = nil
-			end
-		end
-		Waypoints = SurgeonState.Waypoints
-		if not Waypoints then
-			Humanoid:MoveTo(Goal)
-			return
-		end
-		local Index = SurgeonState.Index
-		if Index > #Waypoints then
-			Humanoid:MoveTo(Goal)
-			return
-		end
-		local Waypoint = Waypoints[Index]
-		local WaypointPos = Waypoint.Position
-		local Flat = Vector3.new(WaypointPos.X, Root.Position.Y, WaypointPos.Z)
-		if (Flat - Root.Position).Magnitude < 2.5 then
-			Index += 1
-			SurgeonState.Index = Index
-			if Index > #Waypoints then
-				return
-			end
-			Waypoint = Waypoints[Index]
-			WaypointPos = Waypoint.Position
-		end
-		Humanoid:MoveTo(WaypointPos)
-		if Waypoint.Action == Enum.PathWaypointAction.Jump then
-			Humanoid.Jump = true
-		end
-	end
-	local function SurgeonMoveBlatant(Root, Target, Delta)
-		local Goal = Target.Root.Position
-		local Flat = Vector3.new(Goal.X, Root.Position.Y, Goal.Z)
-		local Offset = Flat - Root.Position
-		local Distance = Offset.Magnitude
-		if Distance <= 2.2 then
-			return
-		end
-		local Step = math.min(Distance - 2, 70 * Delta)
-		local Next = Root.Position + Offset.Unit * Step
-		Root.CFrame = CFrame.new(Next) * (Root.CFrame - Root.CFrame.Position)
-	end
-	local function SurgeonHeal(Root, Character, Target, Now)
-		if Now - SurgeonState.HealAt < 0.7 then
-			return
-		end
-		SurgeonState.HealAt = Now
-		if (Target.Root.Position - Root.Position).Magnitude > 3 then
-			return
-		end
-		local Health = Target.Humanoid.Health
-		if SurgeonState.HealTarget == Target.Model and Health > (SurgeonState.HealHealth or -1) then
-			SurgeonState.HealHealth = Health
-			return
-		end
-		local Backpack = _LocalPlayer:FindFirstChildOfClass("Backpack")
-		local Med = Character:FindFirstChild("Medical Supplies")
-			or Backpack and Backpack:FindFirstChild("Medical Supplies")
-		if not Med then
-			return
-		end
-		if Med.Parent ~= Character then
-			local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-			if Humanoid then
+				local Character = _LocalPlayer.Character
+				local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+				local _sc7 = Character and Character:FindFirstChildOfClass("Humanoid")
+				local Humanoid = _sc7
+				if not Root or not _sc7 or Humanoid.Health <= 0 then
+					return
+				end
+				local Tool = Character:FindFirstChildOfClass("Tool")
+				if not Tool then
+					return
+				end
+				local IsMelee = MeleeToolCache[Tool]
+				if IsMelee == nil then
+					IsMelee = IsMeleeTool(Tool)
+					MeleeToolCache[Tool] = IsMelee
+				end
+				if not IsMelee then
+					return
+				end
+				local Now = tick()
+				local Interval = 0.5
+				local Cap = 5
+				local Configuration = Tool:FindFirstChild("Configuration")
+				if Configuration then
+					local OkDeal, Deal = pcall(function()
+						return Configuration:GetAttribute("DealTime")
+					end)
+					local OkSwing, Swing = pcall(function()
+						return Configuration:GetAttribute("SwingTime")
+					end)
+					local OkHits, Hits = pcall(function()
+						return Configuration:GetAttribute("MaxHits")
+					end)
+					if OkDeal and typeof(Deal) == "number" then
+						Interval = Deal
+					end
+					if OkSwing and typeof(Swing) == "number" and Swing > Interval then
+						Interval = Swing
+					end
+					if OkHits and typeof(Hits) == "number" and Hits > 0 then
+						Cap = math.floor(Hits)
+					end
+				end
+				Interval = Interval / math.max(KillAuraConfig.Speed, 0.05)
+				if Interval < 0.1 then
+					Interval = 0.1
+				end
+				if Now - _rl0[38] < Interval then
+					return
+				end
+				_rl0[38] = Now
+				local Remote = CollectKillAuraTargets(Character, Root, Tool)
+				if not Remote then
+					return
+				end
 				pcall(function()
-					Humanoid:EquipTool(Med)
+					Remote:FireServer("PrepareSwing")
+				end)
+				task.delay(0.2, function()
+					local _sc14 = Unloaded
+					if if Unloaded then _sc14 else not KillAuraConfig.Enabled then
+						return
+					end
+					local FreshCharacter = _LocalPlayer.Character
+					local FreshRoot = FreshCharacter and FreshCharacter:FindFirstChild("HumanoidRootPart")
+					local _sc11 = FreshCharacter and FreshCharacter:FindFirstChildOfClass("Tool")
+					local FreshTool = _sc11
+					if not FreshRoot or not _sc11 or not IsMeleeTool(FreshTool) then
+						return
+					end
+					pcall(function()
+						Remote:FireServer("Swing", "Thrust")
+					end)
+					local FreshRemote, FreshTargets, FreshContainer = CollectKillAuraTargets(FreshCharacter, FreshRoot, FreshTool)
+					if FreshRemote and FreshTargets then
+						SendKillAuraHits(FreshCharacter, FreshRoot, FreshRemote, FreshContainer, FreshTargets, Cap)
+					end
 				end)
 			end
-			return
-		end
-		local Remote = Med:FindFirstChild("RemoteEvent")
-		if not Remote then
-			return
-		end
-		pcall(function()
-			Remote:FireServer("SendRequest", Target.Humanoid)
-		end)
-		SurgeonState.HealTarget = Target.Model
-		SurgeonState.HealHealth = Health
-	end
-	_rl0[39] = { Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, Enum.KeyCode.Up, Enum.KeyCode.Down }
-	local function SurgeonUserMoving()
-		for _, Key in ipairs(_rl0[39]) do
-			if _UserInputService:IsKeyDown(Key) then
-				return true
+			SurgeonState = { Target = nil, Path = nil, Waypoints = nil, Index = 1, Goal = nil, RepathAt = 0, HealAt = 0,
+				HealTarget = nil, HealHealth = nil, Threats = nil, ThreatsAt = 0, SuppliesAt = 0
+			}
+			local function UpdateSuppliesESP()
+				local Now = os.clock()
+				if Now - SurgeonState.SuppliesAt < 0.4 then
+					return
+				end
+				SurgeonState.SuppliesAt = Now
+				local Enabled = SurgeonConfig.SuppliesESP
+				for Part, Highlight in SupplyHighlights do
+					if not Enabled or not Part.Parent then
+						pcall(function()
+							Highlight:Destroy()
+						end)
+						SupplyHighlights[Part] = nil
+					end
+				end
+				if not Enabled then
+					return
+				end
+				local Color = SurgeonConfig.SuppliesColor
+				for _, Part in workspace:GetChildren() do
+					if Part.Name == "SupplyVisualizer" and Part:IsA("BasePart") then
+						local Highlight = SupplyHighlights[Part]
+						if not Highlight or not Highlight.Parent then
+							Highlight = Instance.new("Highlight")
+							Highlight.Name = "UmberSupplies"
+							Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+							Highlight.FillTransparency = 0.45
+							Highlight.OutlineTransparency = 0
+							Highlight.Parent = Part
+							SupplyHighlights[Part] = Highlight
+						end
+						Highlight.FillColor = Color
+						Highlight.OutlineColor = Color
+						Highlight.Enabled = true
+					end
+				end
 			end
-		end
-		return false
-	end
-	local function UpdateSurgeon(Delta)
-		if Unloaded then
-			return
-		end
-		UpdateSuppliesESP()
-		if not SurgeonConfig.AutoHeal then
-			SurgeonState.Target = nil
-			SurgeonState.Waypoints = nil
-			return
-		end
-		local Character = _LocalPlayer.Character
-		local Root = Character and Character:FindFirstChild("HumanoidRootPart")
-		local _sc12 = Character and Character:FindFirstChildOfClass("Humanoid")
-		local Humanoid = _sc12
-		if not (Root and _sc12) or Humanoid.Health <= 0 then
-			return
-		end
-		local Target = SurgeonState.Target
-		if Target then
-			local TargetHumanoid = Target.Humanoid
-			local _sc14_s1 = not Target.Model.Parent or not Target.Root.Parent
-			local _sc14_s2 = _sc14_s1 or not TargetHumanoid
-			local _sc14_s3 = _sc14_s2 or TargetHumanoid.Health <= 0
-			if _sc14_s3 or TargetHumanoid.Health >= TargetHumanoid.MaxHealth then
-				Target = nil
+			local function SurgeonTarget()
+				local Character = _LocalPlayer.Character
+				local _sc6 = Character and Character:FindFirstChild("HumanoidRootPart")
+				local Root = _sc6
+				local Container = workspace:FindFirstChild("Players")
+				if not (_sc6 and Container) then
+					return nil
+				end
+				local Best
+				local BestScore = math.huge
+				local RootPos = Root.Position
+				local Limit = SurgeonConfig.MaxDistance
+				for _, Model in ipairs(Container:GetChildren()) do
+					if Model:IsA("Model") and Model ~= Character then
+						local Humanoid = Model:FindFirstChildOfClass("Humanoid")
+						local TargetRoot = Model:FindFirstChild("HumanoidRootPart")
+						if Humanoid and TargetRoot and Humanoid.Health > 0 and Humanoid.Health < Humanoid.MaxHealth then
+							local Distance = (TargetRoot.Position - RootPos).Magnitude
+							if Distance <= Limit then
+								local Score = Humanoid.Health / math.max(Humanoid.MaxHealth, 1) * 100 + Distance * 0.15
+								if Score < BestScore then
+									BestScore = Score
+									Best = { Model = Model, Humanoid = Humanoid, Root = TargetRoot }
+								end
+							end
+						end
+					end
+				end
+				return Best
 			end
-		end
-		if not Target then
-			Target = SurgeonTarget()
-			SurgeonState.Target = Target
-			SurgeonState.Waypoints = nil
-			SurgeonState.Goal = nil
-		end
-		if not Target then
-			Humanoid:MoveTo(Root.Position)
-			return
-		end
-		if not SurgeonUserMoving() then
-			if SurgeonConfig.Mode == "Blatant" then
-				SurgeonMoveBlatant(Root, Target, Delta)
-			else
-				SurgeonMoveLegit(Root, Humanoid, Target)
+			local function SurgeonThreats()
+				local Container = workspace:FindFirstChild("Zombies")
+				if not Container then
+					return nil
+				end
+				local Threats = {}
+				for _, Model in ipairs(Container:GetChildren()) do
+					local Humanoid = Model:FindFirstChildOfClass("Humanoid")
+					if Humanoid and Humanoid.Health > 0 then
+						local OkPos, Position = pcall(function()
+							return Model:GetPivot().Position
+						end)
+						if OkPos and Position then
+							local Kind = Model:GetAttribute("Type")
+							local Radius = 10
+							if Kind == "Barrel" then
+								local Blast = Model:GetAttribute("BlastRadius")
+								Radius = if typeof(Blast) == "number" then Blast + 4 else 13
+							end
+							table.insert(Threats, { Model = Model, Type = Kind, Position = Position, Radius = Radius })
+						end
+					end
+				end
+				return Threats
 			end
+			local function SurgeonSteer(Goal, Threats)
+				if not SurgeonConfig.Avoid or not Threats then
+					return Goal
+				end
+				local Steer = Goal
+				for _, Threat in ipairs(Threats) do
+					local Offset = Steer - Threat.Position
+					local Distance = Offset.Magnitude
+					if Distance < Threat.Radius then
+						if Distance < 0.1 then
+							Offset = Vector3.new(1, 0, 0)
+						end
+						Steer = Threat.Position + Offset.Unit * Threat.Radius
+					end
+				end
+				return Steer
+			end
+			local function SurgeonPath(Root, Goal)
+				local Path = SurgeonState.Path
+				if not Path then
+					local OkPath, Created = pcall(function()
+						return _rl0[8]:CreatePath({ AgentRadius = 2, AgentHeight = 5, AgentCanJump = true, AgentJumpHeight = 7, AgentMaxSlope = 50 })
+					end)
+					if not OkPath or not Created then
+						return nil
+					end
+					Path = Created
+					SurgeonState.Path = Path
+				end
+				local Ok = pcall(function()
+					Path:ComputeAsync(Root.Position, Goal)
+				end)
+				if not Ok or Path.Status ~= Enum.PathStatus.Success then
+					return nil
+				end
+				return Path:GetWaypoints()
+			end
+			local function SurgeonMoveLegit(Root, Humanoid, Target)
+				local Now = os.clock()
+				if Now - SurgeonState.ThreatsAt >= 0.25 then
+					SurgeonState.ThreatsAt = Now
+					SurgeonState.Threats = SurgeonThreats()
+				end
+				local Threats = SurgeonState.Threats
+				local Goal = Target.Root.Position
+				if (Goal - Root.Position).Magnitude <= 2.2 then
+					Humanoid:MoveTo(Root.Position)
+					return
+				end
+				local Shift = SurgeonState.Goal and (Goal - SurgeonState.Goal).Magnitude or math.huge
+				local Waypoints
+				local _sc8_s1 = not SurgeonState.Waypoints or Now - SurgeonState.RepathAt >= 0.5
+				if _sc8_s1 or Shift > 4 then
+					SurgeonState.RepathAt = Now
+					SurgeonState.Goal = Goal
+					Waypoints = SurgeonPath(Root, SurgeonSteer(Goal, Threats))
+					if Waypoints then
+						SurgeonState.Waypoints = Waypoints
+						SurgeonState.Index = 2
+					else
+						SurgeonState.Waypoints = nil
+					end
+				end
+				Waypoints = SurgeonState.Waypoints
+				if not Waypoints then
+					Humanoid:MoveTo(Goal)
+					return
+				end
+				local Index = SurgeonState.Index
+				if Index > #Waypoints then
+					Humanoid:MoveTo(Goal)
+					return
+				end
+				local Waypoint = Waypoints[Index]
+				local WaypointPos = Waypoint.Position
+				local Flat = Vector3.new(WaypointPos.X, Root.Position.Y, WaypointPos.Z)
+				if (Flat - Root.Position).Magnitude < 2.5 then
+					Index += 1
+					SurgeonState.Index = Index
+					if Index > #Waypoints then
+						return
+					end
+					Waypoint = Waypoints[Index]
+					WaypointPos = Waypoint.Position
+				end
+				Humanoid:MoveTo(WaypointPos)
+				if Waypoint.Action == Enum.PathWaypointAction.Jump then
+					Humanoid.Jump = true
+				end
+			end
+			local function SurgeonMoveBlatant(Root, Target, Delta)
+				local Goal = Target.Root.Position
+				local Flat = Vector3.new(Goal.X, Root.Position.Y, Goal.Z)
+				local Offset = Flat - Root.Position
+				local Distance = Offset.Magnitude
+				if Distance <= 2.2 then
+					return
+				end
+				local Step = math.min(Distance - 2, 70 * Delta)
+				local Next = Root.Position + Offset.Unit * Step
+				Root.CFrame = CFrame.new(Next) * (Root.CFrame - Root.CFrame.Position)
+			end
+			local function SurgeonHeal(Root, Character, Target, Now)
+				if Now - SurgeonState.HealAt < 0.7 then
+					return
+				end
+				SurgeonState.HealAt = Now
+				if (Target.Root.Position - Root.Position).Magnitude > 3 then
+					return
+				end
+				local Health = Target.Humanoid.Health
+				if SurgeonState.HealTarget == Target.Model and Health > (SurgeonState.HealHealth or -1) then
+					SurgeonState.HealHealth = Health
+					return
+				end
+				local Backpack = _LocalPlayer:FindFirstChildOfClass("Backpack")
+				local Med = Character:FindFirstChild("Medical Supplies")
+					or Backpack and Backpack:FindFirstChild("Medical Supplies")
+				if not Med then
+					return
+				end
+				if Med.Parent ~= Character then
+					local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+					if Humanoid then
+						pcall(function()
+							Humanoid:EquipTool(Med)
+						end)
+					end
+					return
+				end
+				local Remote = Med:FindFirstChild("RemoteEvent")
+				if not Remote then
+					return
+				end
+				pcall(function()
+					Remote:FireServer("SendRequest", Target.Humanoid)
+				end)
+				SurgeonState.HealTarget = Target.Model
+				SurgeonState.HealHealth = Health
+			end
+			_rl0[39] = { Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, Enum.KeyCode.Up, Enum.KeyCode.Down }
+			local function SurgeonUserMoving()
+				for _, Key in ipairs(_rl0[39]) do
+					if _UserInputService:IsKeyDown(Key) then
+						return true
+					end
+				end
+				return false
+			end
+			local function UpdateSurgeon(Delta)
+				if Unloaded then
+					return
+				end
+				UpdateSuppliesESP()
+				if not SurgeonConfig.AutoHeal then
+					SurgeonState.Target = nil
+					SurgeonState.Waypoints = nil
+					return
+				end
+				local Character = _LocalPlayer.Character
+				local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+				local _sc7 = Character and Character:FindFirstChildOfClass("Humanoid")
+				local Humanoid = _sc7
+				if not (Root and _sc7) or Humanoid.Health <= 0 then
+					return
+				end
+				local Target = SurgeonState.Target
+				if Target then
+					local TargetHumanoid = Target.Humanoid
+					local _t8679 = not Target.Model.Parent or not Target.Root.Parent
+					if (if _t8679 or not TargetHumanoid then _t8679 or not TargetHumanoid else TargetHumanoid.Health <= 0)
+						or TargetHumanoid.Health >= TargetHumanoid.MaxHealth
+					then
+						Target = nil
+					end
+				end
+				if not Target then
+					Target = SurgeonTarget()
+					SurgeonState.Target = Target
+					SurgeonState.Waypoints = nil
+					SurgeonState.Goal = nil
+				end
+				if not Target then
+					Humanoid:MoveTo(Root.Position)
+					return
+				end
+				if not SurgeonUserMoving() then
+					if SurgeonConfig.Mode == "Blatant" then
+						SurgeonMoveBlatant(Root, Target, Delta)
+					else
+						SurgeonMoveLegit(Root, Humanoid, Target)
+					end
+				end
+				SurgeonHeal(Root, Character, Target, os.clock())
+			end
+			local function UpdateFrame(Delta)
+				UpdateESP()
+				UpdateHitboxVisuals()
+				UpdateThrowables()
+				UpdateBlastRings()
+				GuardWorldFog()
+				UpdateSilentAim()
+				UpdateAutoBuild()
+				UpdateShoveVisual()
+				UpdateKillAuraVisual()
+				UpdateKillAura()
+				UpdateSurgeon(Delta)
+			end
+			Track(_rl0[6].RenderStepped:Connect(UpdateFrame))
 		end
-		SurgeonHeal(Root, Character, Target, os.clock())
+		do
+			local function UpdateHeartbeat()
+				ApplySwingSpeed()
+				SpoofGrabPosition()
+			end
+			Track(_rl0[6].Heartbeat:Connect(UpdateHeartbeat))
+		end
+		Library:OnUnload(Cleanup)
 	end
-	local function UpdateFrame(Delta)
-		UpdateESP()
-		UpdateHitboxVisuals()
-		UpdateThrowables()
-		UpdateBlastRings()
-		GuardWorldFog()
-		UpdateSilentAim()
-		UpdateAutoBuild()
-		UpdateShoveVisual()
-		UpdateKillAuraVisual()
-		UpdateKillAura()
-		UpdateSurgeon(Delta)
+	getgenv().UmberUnload = function()
+		Library:Unload()
 	end
-	Track(_rl0[6].RenderStepped:Connect(UpdateFrame))
-end
-Track(_rl0[6].Heartbeat:Connect(SpoofGrabPosition))
-Track(_rl0[6].Heartbeat:Connect(ApplySwingSpeed))
-Library:OnUnload(Cleanup)
-getgenv().UmberUnload = function()
-	Library:Unload()
-end
-do
 	_rl0[40] = Pace(_rl0[9].Player:AddGroupbox({ Name = "Movement", Side = "Left", IconName = "footprints" }))
 	_rl0[40]:AddToggle("WalkSpeedToggle", { Text = "Walkspeed Toggle",
 		Tooltip = "Borrows the game's Charge speed buff so your speed holds through swings and reloads.",
@@ -3251,8 +3373,6 @@ do
 			end
 		end
 	})
-end
-do
 	_rl0[41] = Pace(_rl0[9].Player:AddGroupbox({ Name = "Protection", Side = "Right", IconName = "shield" }))
 	_rl0[41]:AddToggle("AntiGrab", { Text = "Anti Grab", Tooltip = "Moves you out of grab range on paper so shamblers can't latch on.",
 		Default = false,
@@ -3260,8 +3380,6 @@ do
 			AntiGrabEnabled = Value
 		end
 	})
-end
-do
 	_rl0[42] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "ESP", Side = "Left", IconName = "scan-eye" }))
 	_rl0[42]:AddToggle("ZombieESP", { Text = "Zombie ESP", Tooltip = "Turns on all the zombie visuals.", Default = false,
 		["Callback"] = function(Value)
@@ -3273,8 +3391,12 @@ do
 			PlayerConfig.Enabled = Value
 		end
 	})
-end
-do
+	_rl0[42]:AddDropdown("PlayerESPTarget", { Values = { "Other Players", "Self", "Both" }, Default = "Other Players", Text = "Player ESP Target",
+		Tooltip = "Who the player ESP draws.",
+		["Callback"] = function(Value)
+			PlayerConfig.Target = Value
+		end
+	})
 	_rl0[43] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Zombie ESP Options", Side = "Left", IconName = "crosshair" }))
 	_rl0[43]:AddDropdown("ZombieType", { Values = _rl0[21], Default = { "All" }, Text = "Zombie Type",
 		Tooltip = "Only draw the types you tick.", Multi = true,
@@ -3401,81 +3523,63 @@ do
 			ZombieConfig.BlastRadiusColor = Value
 		end
 	})
-end
-do
 	_rl0[44] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Zombie Colors", Side = "Left", IconName = "palette" }))
-	do
-		_rl0[45] = _rl0[44]:AddLabel("Shambler")
-		_rl0[45]:AddColorPicker("ZombieColorNormal", { Default = ZombieColors.Normal, Title = "Shambler Color",
-			["Callback"] = function(Value)
-				ZombieColors.Normal = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for shamblers.", nil, _rl0[45].TextLabel)
-	end
-	do
-		_rl0[46] = _rl0[44]:AddLabel("Runner")
-		_rl0[46]:AddColorPicker("ZombieColorFast", { Default = ZombieColors.Fast, Title = "Runner Color",
-			["Callback"] = function(Value)
-				ZombieColors.Fast = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for runners.", nil, _rl0[46].TextLabel)
-	end
-	do
-		_rl0[47] = _rl0[44]:AddLabel("Bomber")
-		_rl0[47]:AddColorPicker("ZombieColorBarrel", { Default = ZombieColors.Barrel, Title = "Bomber Color",
-			["Callback"] = function(Value)
-				ZombieColors.Barrel = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for bombers.", nil, _rl0[47].TextLabel)
-	end
-	do
-		_rl0[48] = _rl0[44]:AddLabel("Sapper")
-		_rl0[48]:AddColorPicker("ZombieColorSapper", { Default = ZombieColors.Sapper, Title = "Sapper Color",
-			["Callback"] = function(Value)
-				ZombieColors.Sapper = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for sappers.", nil, _rl0[48].TextLabel)
-	end
-	do
-		_rl0[49] = _rl0[44]:AddLabel("Igniter")
-		_rl0[49]:AddColorPicker("ZombieColorIgniter", { Default = ZombieColors.Igniter, Title = "Igniter Color",
-			["Callback"] = function(Value)
-				ZombieColors.Igniter = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for igniters.", nil, _rl0[49].TextLabel)
-	end
-	do
-		_rl0[50] = _rl0[44]:AddLabel("Cuirassier")
-		_rl0[50]:AddColorPicker("ZombieColorCuirassier", { Default = ZombieColors.Cuirassier, Title = "Cuirassier Color",
-			["Callback"] = function(Value)
-				ZombieColors.Cuirassier = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for cuirassiers.", nil, _rl0[50].TextLabel)
-	end
-	do
-		_rl0[51] = _rl0[44]:AddLabel("Crawler")
-		_rl0[51]:AddColorPicker("ZombieColorCrawler", { Default = ZombieColors.Crawler, Title = "Crawler Color",
-			["Callback"] = function(Value)
-				ZombieColors.Crawler = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for crawlers.", nil, _rl0[51].TextLabel)
-	end
-	do
-		_rl0[52] = _rl0[44]:AddLabel("Headless")
-		_rl0[52]:AddColorPicker("ZombieColorHeadless", { Default = ZombieColors.Headless, Title = "Headless Color",
-			["Callback"] = function(Value)
-				ZombieColors.Headless = Value
-			end
-		})
-		Library:AddTooltip("Box and chams colour for headless.", nil, _rl0[52].TextLabel)
-	end
+	_rl0[45] = _rl0[44]:AddLabel("Shambler")
+	_rl0[45]:AddColorPicker("ZombieColorNormal", { Default = ZombieColors.Normal, Title = "Shambler Color",
+		["Callback"] = function(Value)
+			ZombieColors.Normal = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for shamblers.", nil, _rl0[45].TextLabel)
+	_rl0[46] = _rl0[44]:AddLabel("Runner")
+	_rl0[46]:AddColorPicker("ZombieColorFast", { Default = ZombieColors.Fast, Title = "Runner Color",
+		["Callback"] = function(Value)
+			ZombieColors.Fast = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for runners.", nil, _rl0[46].TextLabel)
+	_rl0[47] = _rl0[44]:AddLabel("Bomber")
+	_rl0[47]:AddColorPicker("ZombieColorBarrel", { Default = ZombieColors.Barrel, Title = "Bomber Color",
+		["Callback"] = function(Value)
+			ZombieColors.Barrel = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for bombers.", nil, _rl0[47].TextLabel)
+	_rl0[48] = _rl0[44]:AddLabel("Sapper")
+	_rl0[48]:AddColorPicker("ZombieColorSapper", { Default = ZombieColors.Sapper, Title = "Sapper Color",
+		["Callback"] = function(Value)
+			ZombieColors.Sapper = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for sappers.", nil, _rl0[48].TextLabel)
+	_rl0[49] = _rl0[44]:AddLabel("Igniter")
+	_rl0[49]:AddColorPicker("ZombieColorIgniter", { Default = ZombieColors.Igniter, Title = "Igniter Color",
+		["Callback"] = function(Value)
+			ZombieColors.Igniter = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for igniters.", nil, _rl0[49].TextLabel)
+	_rl0[50] = _rl0[44]:AddLabel("Cuirassier")
+	_rl0[50]:AddColorPicker("ZombieColorCuirassier", { Default = ZombieColors.Cuirassier, Title = "Cuirassier Color",
+		["Callback"] = function(Value)
+			ZombieColors.Cuirassier = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for cuirassiers.", nil, _rl0[50].TextLabel)
+	_rl0[51] = _rl0[44]:AddLabel("Crawler")
+	_rl0[51]:AddColorPicker("ZombieColorCrawler", { Default = ZombieColors.Crawler, Title = "Crawler Color",
+		["Callback"] = function(Value)
+			ZombieColors.Crawler = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for crawlers.", nil, _rl0[51].TextLabel)
+	_rl0[52] = _rl0[44]:AddLabel("Headless")
+	_rl0[52]:AddColorPicker("ZombieColorHeadless", { Default = ZombieColors.Headless, Title = "Headless Color",
+		["Callback"] = function(Value)
+			ZombieColors.Headless = Value
+		end
+	})
+	Library:AddTooltip("Box and chams colour for headless.", nil, _rl0[52].TextLabel)
 	_rl0[53] = _rl0[44]:AddLabel("Big Boy")
 	_rl0[53]:AddColorPicker("ZombieColorBigBoy", { Default = ZombieColors.BigBoy, Title = "Big Boy Color",
 		["Callback"] = function(Value)
@@ -3483,8 +3587,6 @@ do
 		end
 	})
 	Library:AddTooltip("Box and chams colour for big boys.", nil, _rl0[53].TextLabel)
-end
-do
 	_rl0[54] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Player ESP Options", Side = "Right", IconName = "users" }))
 	_rl0[54]:AddToggle("PlayerBox", { Text = "Box", Tooltip = "Box around each player.", Default = true,
 		["Callback"] = function(Value)
@@ -3605,8 +3707,6 @@ do
 			end
 		})
 	end
-end
-do
 	_rl0[56] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Throwables", Side = "Right", IconName = "bomb" }))
 	_rl0[56]:AddToggle("ThrowableTimer", { Text = "Throwable Timer",
 		Tooltip = "Counts down how long a thrown explosive has before it goes off.", Default = false,
@@ -3627,8 +3727,6 @@ do
 			ThrowableConfig.Trajectory = Value
 		end
 	})
-end
-do
 	_rl0[57] = Pace(_rl0[9].World:AddGroupbox({ Name = "Lighting", Side = "Left", IconName = "sun" }))
 	_rl0[57]:AddToggle("WorldFullbright", { Text = "Fullbright", Tooltip = "Lights up the whole map.", Default = false,
 		["Callback"] = function(Value)
@@ -3642,8 +3740,6 @@ do
 			ApplyWorldLighting()
 		end
 	})
-end
-do
 	_rl0[58] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Hitbox Expander", Side = "Left", IconName = "expand" }))
 	_rl0[58]:AddToggle("HitboxExpander", { Text = "Hitbox Expander", Tooltip = "Bigger hit area on your swings.", Default = false,
 		["Callback"] = function(Value)
@@ -3682,8 +3778,6 @@ do
 			HitboxConfig.Transparency = Value / 100
 		end
 	})
-end
-do
 	_rl0[59] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Firearms", Side = "Left", IconName = "crosshair" }))
 	_rl0[59]:AddToggle("SilentAim", { Text = "Silent Aim", Tooltip = "Shots go to the zombie in the circle instead of where you aim.",
 		Default = false,
@@ -3720,8 +3814,6 @@ do
 			AimConfig.Silent.Types = Types
 		end
 	})
-end
-do
 	_rl0[60] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Melee", Side = "Right", IconName = "target" }))
 	_rl0[60]:AddToggle("MeleeAutoHeadshot", { Text = "Auto Headshot", Tooltip = "Turns your hits into headshots.", Default = false,
 		["Callback"] = function(Value)
@@ -3783,8 +3875,6 @@ do
 			KillAuraConfig.Part = Value
 		end
 	})
-end
-do
 	_rl0[61] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Legit", Side = "Right", IconName = "chevron-up" }))
 	_rl0[61]:AddToggle("AutoJumpOnAttack", { Text = "Auto Jump On Attack",
 		Tooltip = "Jumps with the game jump power whenever you swing your melee weapon.", Default = false,
@@ -3792,8 +3882,6 @@ do
 			LegitConfig.AutoJump = Value
 		end
 	})
-end
-do
 	_rl0[62] = Pace(_rl0[9].Class:AddGroupbox({ Name = "Sapper", Side = "Left", IconName = "hammer" }))
 	_rl0[62]:AddToggle("AutoBuild", { Text = "Auto Build", Tooltip = "Automatically repairs damaged sapper buildings near you.",
 		Default = false,
@@ -3833,8 +3921,6 @@ do
 			ClassConfig.ShoveTransparency = Value
 		end
 	})
-end
-do
 	local function ApplySurgeonStyle(Style)
 		SurgeonConfig.Style = Style
 		SurgeonConfig.Chams = Style == "Chams"
@@ -3887,9 +3973,9 @@ do
 			if not Value then
 				local Character = _LocalPlayer.Character
 				local Root = Character and Character:FindFirstChild("HumanoidRootPart")
-				local _sc12 = Character and Character:FindFirstChildOfClass("Humanoid")
-				local Humanoid = _sc12
-				if Root and _sc12 then
+				local _sc7 = Character and Character:FindFirstChildOfClass("Humanoid")
+				local Humanoid = _sc7
+				if Root and _sc7 then
 					Humanoid:MoveTo(Root.Position)
 				end
 			end
@@ -3915,59 +4001,57 @@ do
 		end
 	})
 end
-do
-	_rl0[64] = Pace(_rl0[9].Settings:AddGroupbox({ Side = "Left", Name = "Menu", IconName = "wrench" }))
-	_rl0[64]:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu",
-		Tooltip = "Shows the keybind list on screen.",
-		["Callback"] = function(Value)
-			Library.KeybindFrame.Visible = Value
-		end
-	})
-	_rl0[64]:AddToggle("KeybindMenuVisibilityControl", { Default = false, Text = "Keybind Menu Visibility", Tooltip = "Adds a gear to the keybind list.",
-		["Callback"] = function(Value)
-			Library.KeybindMenu:SetVisibilityControl(Value)
-		end
-	})
-	_rl0[64]:AddToggle("ShowCustomCursor", { Text = "Custom Cursor", Tooltip = "Swaps out the mouse cursor.", Default = Library.ShowCustomCursor,
-		["Callback"] = function(Value)
-			Library.ShowCustomCursor = Value
-		end
-	})
-	_rl0[64]:AddToggle("AlwaysOnTop", { Text = "Always On Top", Tooltip = "Keeps the menu above other windows.",
-		Default = Window.AlwaysOnTop,
-		["Callback"] = function(Value)
-			Window:SetAlwaysOnTop(Value)
-		end
-	})
-	_rl0[64]:AddDropdown("NotificationSide", { Values = { "Left", "Right" }, Default = "Right", Text = "Notification Side",
-		Tooltip = "Where notifications pop up.",
-		["Callback"] = function(Value)
-			Library:SetNotifySide(Value)
-		end
-	})
-	_rl0[64]:AddDropdown("DPIDropdown", { Values = { "50%", "75%", "100%", "125%", "150%", "175%", "200%" }, Default = "100%",
-		Text = "DPI Scale", Tooltip = "Scales the whole menu.",
-		["Callback"] = function(Value)
-			Value = Value:gsub("%%", "")
-			local DPI = tonumber(Value)
-			Library:SetDPIScale(DPI)
-		end
-	})
-	_rl0[64]:AddSlider("UICornerSlider", { AllowRightClickInput = true, Text = "Corner Radius", Tooltip = "How round the menu corners are.",
-		Default = Library.CornerRadius, Min = 0, Max = 20, Rounding = 0,
-		["Callback"] = function(Value)
-			Window:SetCornerRadius(Value)
-		end
-	})
-	_rl0[64]:AddDivider()
-	_rl0[64]:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
-	_rl0[64]:AddButton({ Text = "Unload",
-		["Func"] = function()
-			Library:Unload()
-		end,
-		 Tooltip = "Closes the menu and undoes everything."
-	})
-end
+_rl0[64] = Pace(_rl0[9].Settings:AddGroupbox({ Side = "Left", Name = "Menu", IconName = "wrench" }))
+_rl0[64]:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu",
+	Tooltip = "Shows the keybind list on screen.",
+	["Callback"] = function(Value)
+		Library.KeybindFrame.Visible = Value
+	end
+})
+_rl0[64]:AddToggle("KeybindMenuVisibilityControl", { Default = false, Text = "Keybind Menu Visibility", Tooltip = "Adds a gear to the keybind list.",
+	["Callback"] = function(Value)
+		Library.KeybindMenu:SetVisibilityControl(Value)
+	end
+})
+_rl0[64]:AddToggle("ShowCustomCursor", { Text = "Custom Cursor", Tooltip = "Swaps out the mouse cursor.", Default = Library.ShowCustomCursor,
+	["Callback"] = function(Value)
+		Library.ShowCustomCursor = Value
+	end
+})
+_rl0[64]:AddToggle("AlwaysOnTop", { Text = "Always On Top", Tooltip = "Keeps the menu above other windows.",
+	Default = Window.AlwaysOnTop,
+	["Callback"] = function(Value)
+		Window:SetAlwaysOnTop(Value)
+	end
+})
+_rl0[64]:AddDropdown("NotificationSide", { Values = { "Left", "Right" }, Default = "Right", Text = "Notification Side",
+	Tooltip = "Where notifications pop up.",
+	["Callback"] = function(Value)
+		Library:SetNotifySide(Value)
+	end
+})
+_rl0[64]:AddDropdown("DPIDropdown", { Values = { "50%", "75%", "100%", "125%", "150%", "175%", "200%" }, Default = "100%",
+	Text = "DPI Scale", Tooltip = "Scales the whole menu.",
+	["Callback"] = function(Value)
+		Value = Value:gsub("%%", "")
+		local DPI = tonumber(Value)
+		Library:SetDPIScale(DPI)
+	end
+})
+_rl0[64]:AddSlider("UICornerSlider", { AllowRightClickInput = true, Text = "Corner Radius", Tooltip = "How round the menu corners are.",
+	Default = Library.CornerRadius, Min = 0, Max = 20, Rounding = 0,
+	["Callback"] = function(Value)
+		Window:SetCornerRadius(Value)
+	end
+})
+_rl0[64]:AddDivider()
+_rl0[64]:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
+_rl0[64]:AddButton({ Text = "Unload",
+	["Func"] = function()
+		Library:Unload()
+	end,
+	 Tooltip = "Closes the menu and undoes everything."
+})
 Library.ToggleKeybind = _rl0[4].MenuKeybind
 _rl0[3]:SetLibrary(Library)
 _rl0[3]:IgnoreThemeSettings()
