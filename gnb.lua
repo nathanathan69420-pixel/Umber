@@ -119,36 +119,36 @@ task.wait()
 _rl0[4] = loadstring(_rl0[1].SaveManager)()
 _rl0[5] = Library.Options
 local LibraryToggles = Library.Toggles
-local RunService = game.RunService
+_rl0[6] = game.RunService
 local Lighting = game.Lighting
-_rl0[6] = game.Stats
-_rl0[7] = game:GetService("PathfindingService")
+_rl0[7] = game.Stats
+_rl0[8] = game:GetService("PathfindingService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
-getgenv().UmberBuild = "1121-1746"
-_rl0[8] = Library:CreateWindow({ Title = "Umber", Footer = "v0.4", NotifySide = "Right", Font = Enum.Font.Gotham })
+getgenv().UmberBuild = "1121-1831"
+_rl0[9] = Library:CreateWindow({ Title = "Umber", Footer = "v0.4", NotifySide = "Right", Font = Enum.Font.Gotham })
 _rl0[3]:SetLibrary(Library)
 _rl0[3]:SetFolder("Umber")
 _rl0[3]:SetDefaultTheme({ FontFace = "Gotham", FontColor = "ffffff", MainColor = "4d3b27", AccentColor = "a45b26",
 	BackgroundColor = "6f472d", OutlineColor = "282828", BackgroundImage = ""
 })
-_rl0[9] = { Main = _rl0[8]:AddTab("Main", "home"), Player = _rl0[8]:AddTab("Player", "user"),
-	Visuals = _rl0[8]:AddTab("Visuals", "eye"), Misc = _rl0[8]:AddTab("Misc", "sun"),
-	Combat = _rl0[8]:AddTab("Combat", "swords"), Class = _rl0[8]:AddTab("Class Features", "hammer"),
-	Settings = _rl0[8]:AddTab("Settings", "settings")
+_rl0[10] = { Main = _rl0[9]:AddTab("Main", "home"), Player = _rl0[9]:AddTab("Player", "user"),
+	Visuals = _rl0[9]:AddTab("Visuals", "eye"), Misc = _rl0[9]:AddTab("Misc", "sun"),
+	Combat = _rl0[9]:AddTab("Combat", "swords"), Class = _rl0[9]:AddTab("Class Features", "hammer"),
+	Settings = _rl0[9]:AddTab("Settings", "settings")
 }
-_rl0[10] = { "Welcome to Umber, %s", "Greetings, %s", "Good to see you, %s", "Umber is ready, %s",
+_rl0[11] = { "Welcome to Umber, %s", "Greetings, %s", "Good to see you, %s", "Umber is ready, %s",
 	"Back again, %s?"
 }
-_rl0[11] = string.format(_rl0[10][math.random(#_rl0[10])], LocalPlayer.DisplayName)
-_rl0[12] = string.format("rbxthumb://type=AvatarHeadShot&id=%s&w=150&h=150", tostring(LocalPlayer.UserId))
-_rl0[13] = 0
+_rl0[12] = string.format(_rl0[11][math.random(#_rl0[11])], LocalPlayer.DisplayName)
+_rl0[13] = string.format("rbxthumb://type=AvatarHeadShot&id=%s&w=150&h=150", tostring(LocalPlayer.UserId))
+_rl0[14] = 0
 local function Breathe()
 	local Now = os.clock()
-	if Now - _rl0[13] < 0.02 then
+	if Now - _rl0[14] < 0.02 then
 		return
 	end
-	_rl0[13] = Now
+	_rl0[14] = Now
 	task.wait()
 end
 local function Pace(Group)
@@ -167,96 +167,49 @@ local function Pace(Group)
 	})
 end
 do
-	local AboutGroup = Pace(_rl0[9].Main:AddGroupbox({ Name = "About", Side = "Left", IconName = "circle-user" }))
-	AboutGroup:AddImage("AboutAvatar", { Image = _rl0[12], Height = 72, ScaleType = Enum.ScaleType.Fit })
+	local AboutGroup = Pace(_rl0[10].Main:AddGroupbox({ Name = "About", Side = "Left", IconName = "circle-user" }))
+	AboutGroup:AddImage("AboutAvatar", { Image = _rl0[13], Height = 72, ScaleType = Enum.ScaleType.Fit })
 	AboutGroup:AddLabel({ Text = string.format("%s (@%s)", LocalPlayer.DisplayName, LocalPlayer.Name), DoesWrap = true,
 		Size = 16
 	})
-	AboutGroup:AddLabel({ Text = _rl0[11], DoesWrap = true, Size = 14 })
+	AboutGroup:AddLabel({ Text = _rl0[12], DoesWrap = true, Size = 14 })
 end
 local Connections = {}
 local Tracked = {}
 local SurgeonTracked = {}
 local Visuals = {}
 local FuseMarks = {}
-_rl0[14] = {}
 _rl0[15] = {}
+_rl0[16] = {}
 local SupplyHighlights = setmetatable({}, { __mode = "k" })
-_rl0[16] = { Camera = nil, Position = Vector3.new(), Look = Vector3.new(), Viewport = Vector2.new(), Now = 0 }
-_rl0[17] = false
-_rl0[18] = 55
+_rl0[17] = { Camera = nil, Position = Vector3.new(), Look = Vector3.new(), Viewport = Vector2.new(), Now = 0 }
+local ChargeSpeed = false
+local ChargeValue = 55
 local Unloaded = false
-local LastESPInterval = 1 / 30
-local LastESPStep = 1
-local ESPEMA = 0
-local ESPStepAt = { 0.0015, 0.003, 0.005 }
-_rl0[19] = { 30, 20, 15, 10 }
-do
-	local function MeasureRefreshRate()
-		local Samples = {}
-		local Previous = time()
-		for Index = 1, 120 do
-			RunService.RenderStepped:Wait()
-			local Now = time()
-			local Delta = Now - Previous
-			Previous = Now
-			if Index > 20 and Delta > 0 then
-				table.insert(Samples, Delta)
-			end
-		end
-		if #Samples < 10 then
-			return nil
-		end
-		table.sort(Samples)
-		local Median = Samples[math.max(1, math.floor(#Samples * 0.5))]
-		if not Median or Median <= 0 then
-			return nil
-		end
-		return math.clamp(math.floor(1 / Median + 0.5), 24, 240)
-	end
-	local function ApplyRefreshRate(Hz)
-		local TargetFps = math.max(Hz * 0.5, 24)
-		_rl0[19] = { TargetFps, TargetFps * 0.75, TargetFps * 0.5, TargetFps * 0.35 }
-		LastESPInterval = 1 / _rl0[19][LastESPStep]
-	end
-	task.spawn(function()
-		local Hz = MeasureRefreshRate()
-		if not Hz then
-			return
-		end
-		ApplyRefreshRate(Hz)
-		if Hz < 40 then
-			task.wait(10)
-			local Retry = MeasureRefreshRate()
-			if Retry and Retry > Hz then
-				ApplyRefreshRate(Retry)
-			end
-		end
-	end)
-end
-_rl0[20] = 0
-_rl0[21] = 0
+_rl0[18] = 1 / 60
+local VisualAccumulator = 0
+_rl0[19] = 0
 local EspIdle = false
-_rl0[22] = false
-_rl0[23] = { "ThrowSpeed", "ThrowPower", "ProjectileSpeed", "LaunchSpeed", "MuzzleVelocity", "GrenadeSpeed" }
-_rl0[24] = { "HasFuse", "FuseTimer", "NumFuseBones", "NoUnderhand" }
-_rl0[25] = { ["Hand Mortar"] = true, ["Tar Bottle"] = true, Grenade = true, ["Improved Grenade"] = true }
-_rl0[26] = 5
-_rl0[27] = 0.05
-_rl0[28] = Color3.fromRGB(255, 70, 70)
-_rl0[29] = Color3.fromRGB(255, 170, 80)
-_rl0[30] = LocalPlayer:GetMouse()
+_rl0[20] = false
+_rl0[21] = { "ThrowSpeed", "ThrowPower", "ProjectileSpeed", "LaunchSpeed", "MuzzleVelocity", "GrenadeSpeed" }
+_rl0[22] = { "HasFuse", "FuseTimer", "NumFuseBones", "NoUnderhand" }
+_rl0[23] = { ["Hand Mortar"] = true, ["Tar Bottle"] = true, Grenade = true, ["Improved Grenade"] = true }
+_rl0[24] = 5
+_rl0[25] = 0.05
+local DangerColor = Color3.fromRGB(255, 70, 70)
+_rl0[26] = Color3.fromRGB(255, 170, 80)
+_rl0[27] = LocalPlayer:GetMouse()
 local HitboxConfig = { Enabled = false, Size = 5, Part = "All", IgnoreBarrel = false, Show = false, Transparency = 0.9 }
 local MeleeConfig = { AutoHeadshot = false, Chance = 100, SwingSpeed = 1, SwingSpeedEnabled = false }
-_rl0[31] = { AutoJump = false }
+_rl0[28] = { AutoJump = false }
 local ClassConfig = { AutoBuild = false, BuildPriority = "Closest Building", ShoveExpander = false, ShoveRadius = 5,
 	ShoveShow = false, ShoveTransparency = 95, AutoPlay = false
 }
 local MusicianState = { Instrument = nil, Tool = nil, Beat = nil, NextScan = 0 }
 local ThrowableConfig = { Timer = false, MortarTimer = false, Trajectory = false }
-_rl0[32] = { NoRecoil = false }
+_rl0[29] = { NoRecoil = false }
 local PanicConfig = { Enabled = false, Saved = {} }
-_rl0[33] = { "SilentAim", "HitboxExpander", "MeleeAutoHeadshot", "MeleeSwingSpeedEnabled", "ShoveExpander" }
+_rl0[30] = { "SilentAim", "HitboxExpander", "MeleeAutoHeadshot", "MeleeSwingSpeedEnabled", "ShoveExpander" }
 local AimConfig = { 
 	Silent = { Enabled = false,
 		Types = { Shambler = true, Runner = true, Bomber = true, Sapper = true, Igniter = true, Cuirassier = true,
@@ -278,7 +231,7 @@ local ZombieConfig = { Enabled = false, Types = { All = true }, Box = true, BoxS
 	BomberTimerOffsetX = 0, BomberTimerOffsetY = 0, BlastRadius = true,
 	BlastRadiusColor = Color3.fromRGB(255, 90, 60)
 }
-_rl0[34] = { { Key = "Normal", Display = "Shambler", Color = Color3.fromRGB(120, 220, 120) },
+_rl0[31] = { { Key = "Normal", Display = "Shambler", Color = Color3.fromRGB(120, 220, 120) },
 	{ Key = "Fast", Display = "Runner", Color = Color3.fromRGB(80, 190, 255) },
 	{ Key = "Barrel", Display = "Bomber", Color = Color3.fromRGB(255, 130, 60) },
 	{ Key = "Sapper", Display = "Sapper", Color = Color3.fromRGB(255, 220, 90) },
@@ -289,12 +242,12 @@ _rl0[34] = { { Key = "Normal", Display = "Shambler", Color = Color3.fromRGB(120,
 	{ Key = "BigBoy", Display = "Big Boy", Color = Color3.fromRGB(255, 70, 70) }
 }
 local ZombieColors = {}
-_rl0[35] = {}
-_rl0[36] = { "All" }
-for _, Kind in ipairs(_rl0[34]) do
+_rl0[32] = {}
+_rl0[33] = { "All" }
+for _, Kind in ipairs(_rl0[31]) do
 	ZombieColors[Kind.Key] = Kind.Color
-	_rl0[35][Kind.Key] = Kind.Display
-	table.insert(_rl0[36], Kind.Display)
+	_rl0[32][Kind.Key] = Kind.Display
+	table.insert(_rl0[33], Kind.Display)
 end
 local PlayerConfig = { Enabled = false, Box = true, BoxColor = Color3.fromRGB(120, 200, 130), Chams = false,
 	ChamsColor = Color3.fromRGB(120, 200, 130), Tracers = false,
@@ -306,7 +259,6 @@ local PlayerConfig = { Enabled = false, Box = true, BoxColor = Color3.fromRGB(12
 	PinnedColor = Color3.fromRGB(255, 170, 60), Burning = false,
 	BurningColor = Color3.fromRGB(255, 130, 40), BrokenLegs = false,
 	BrokenLegsColor = Color3.fromRGB(180, 180, 255), BoxStyle = "Box", Target = "Other Players",
-	LowHealth = true, LowHealthThreshold = 35, LowHealthColor = Color3.fromRGB(255, 70, 70),
 	Alerts = false
 }
 local SurgeonConfig = { Enabled = false, Threshold = 30, Color = Color3.fromRGB(255, 90, 90), Box = true,
@@ -315,10 +267,10 @@ local SurgeonConfig = { Enabled = false, Threshold = 30, Color = Color3.fromRGB(
 	SuppliesColor = Color3.fromRGB(255, 210, 90), AutoHeal = false, Mode = "Legit", MaxDistance = 40,
 	Avoid = true
 }
-_rl0[37] = { Head = { Head = true }, Torso = { Torso = true },
+_rl0[34] = { Head = { Head = true }, Torso = { Torso = true },
 	Legs = { ["Left Leg"] = true, ["Right Leg"] = true }, HumanoidRootPart = { HumanoidRootPart = true }
 }
-_rl0[38] = { RunnerTackle = "Tackled", RunnerAttack = "Pinned", RunnerClaw = "Clawed",
+_rl0[35] = { RunnerTackle = "Tackled", RunnerAttack = "Pinned", RunnerClaw = "Clawed",
 	RunnerVomit = "Vomited On", SapperBlocked = "Sapper Block", CuirassierImpale = "Impaled"
 }
 local WorldOriginal = { Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient,
@@ -446,7 +398,7 @@ do
 	end))
 	WatchAtmosphere()
 end
-_rl0[39] = 0
+_rl0[36] = 0
 local function GuardWorldFog()
 	local WorldOverridden = Unloaded
 	if not Unloaded then
@@ -456,10 +408,10 @@ local function GuardWorldFog()
 		return
 	end
 	local Now = time()
-	if Now - _rl0[39] < 0.25 then
+	if Now - _rl0[36] < 0.25 then
 		return
 	end
-	_rl0[39] = Now
+	_rl0[36] = Now
 	if WorldConfig.Fullbright then
 		Lighting.Ambient = Color3.new(1, 1, 1)
 		Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
@@ -470,7 +422,7 @@ local function GuardWorldFog()
 	end
 end
 local function EnsureEnabled(Name)
-	if _rl0[22] then
+	if _rl0[20] then
 		return
 	end
 	local Toggle = LibraryToggles[Name]
@@ -567,10 +519,10 @@ Track(LocalPlayer.CharacterAdded:Connect(function()
 end))
 do
 	local SpeedModifier
-	_rl0[72] = Drawing.Fonts and Drawing.Fonts.Plex or 2
+	_rl0[69] = Drawing.Fonts and Drawing.Fonts.Plex or 2
 	local TextBase = setmetatable({}, { __mode = "k" })
 	local EspScale = 1
-	_rl0[73] = Vector2.new(-1, -1)
+	_rl0[70] = Vector2.new(-1, -1)
 	local function ComputeEspScale()
 		local Camera = workspace.CurrentCamera
 		local _sc1 = Camera and Camera.ViewportSize or Vector2.new(1920, 1080)
@@ -583,11 +535,11 @@ do
 	end
 	local function RefreshEspScale()
 		local Scale, Viewport = ComputeEspScale()
-		if Scale == EspScale and Viewport == _rl0[73] then
+		if Scale == EspScale and Viewport == _rl0[70] then
 			return EspScale
 		end
 		EspScale = Scale
-		_rl0[73] = Viewport
+		_rl0[70] = Viewport
 		for Text, Base in TextBase do
 			pcall(function()
 				Text.Size = math.floor(Base * Scale + 0.5)
@@ -614,7 +566,7 @@ do
 	local WaypointText = Drawing.new("Text")
 	TextBase[WaypointText] = 12
 	WaypointText.Size = Scaled(12)
-	WaypointText.Font = _rl0[72]
+	WaypointText.Font = _rl0[69]
 	WaypointText.Center = true
 	WaypointText.Outline = true
 	WaypointText.OutlineColor = Color3.new(0, 0, 0)
@@ -622,14 +574,14 @@ do
 	local WaypointDist = Drawing.new("Text")
 	TextBase[WaypointDist] = 10
 	WaypointDist.Size = Scaled(10)
-	WaypointDist.Font = _rl0[72]
+	WaypointDist.Font = _rl0[69]
 	WaypointDist.Center = true
 	WaypointDist.Outline = true
 	WaypointDist.OutlineColor = Color3.new(0, 0, 0)
 	WaypointDist.Transparency = 1
 	WaypointDist.Visible = false
-	_rl0[43] = 0
-	_rl0[41] = {}
+	_rl0[40] = 0
+	_rl0[38] = {}
 	local function ObjectiveGameplay()
 		local ReplicatedStorage = game:GetService("ReplicatedStorage")
 		local GameStates = ReplicatedStorage:FindFirstChild("GameStates")
@@ -751,7 +703,7 @@ do
 		local Color = MiscConfig.WaypointColor
 		local Distance = math.floor((Position - Root.Position).Magnitude + 0.5)
 		local OverlapsESP = false
-		for _, Box in ipairs(_rl0[41]) do
+		for _, Box in ipairs(_rl0[38]) do
 			if math.abs(Box.X - Anchor.X) < 45 and Anchor.Y > Box.Y - 70 and Anchor.Y < Box.Y + 45 then
 				OverlapsESP = true
 				break
@@ -774,24 +726,25 @@ do
 		WaypointDist.Visible = not OverlapsESP
 	end
 	local AlertPool = {}
+	local AlertWeakPercent = 30
 	local function EnsureAlert(Index)
 		local Entry = AlertPool[Index]
 		if Entry then
 			return Entry
 		end
-		local Dot = Drawing.new("Square")
-		Dot.Filled = true
-		Dot.Thickness = 1
-		Dot.Visible = false
+		local Arrow = Drawing.new("Triangle")
+		Arrow.Filled = true
+		Arrow.Thickness = 1
+		Arrow.Visible = false
 		local Text = Drawing.new("Text")
 		TextBase[Text] = 11
 		Text.Size = Scaled(11)
-		Text.Font = _rl0[72]
+		Text.Font = _rl0[69]
 		Text.Center = true
 		Text.Outline = true
 		Text.OutlineColor = Color3.new(0, 0, 0)
 		Text.Visible = false
-		local Entry_s1 = { Dot = Dot, Text = Text }
+		local Entry_s1 = { Arrow = Arrow, Text = Text }
 		AlertPool[Index] = Entry_s1
 		return Entry_s1
 	end
@@ -803,60 +756,81 @@ do
 		if PlayerConfig.Alerts and PlayerConfig.Enabled and Camera and Root and not Unloaded then
 			local Viewport = Camera.ViewportSize
 			local Center = Vector2.new(Viewport.X * 0.5, Viewport.Y * 0.5)
-			for _, Player in ipairs(Players:GetPlayers()) do
-				if Player == LocalPlayer then
+			local Container = workspace:FindFirstChild("Players")
+			for _, Model in if Container then Container:GetChildren() else {} do
+				if not Model:IsA("Model") then
 					continue
 				end
-				local Model = Player.Character
-				local Humanoid = Model and Model:FindFirstChildOfClass("Humanoid")
-				local _sc4 = Model and Model:FindFirstChild("HumanoidRootPart")
-				local TargetRoot = _sc4
-				if not (Humanoid and _sc4 and Humanoid.Health > 0) then
+				local Player = Players:GetPlayerFromCharacter(Model)
+				local Humanoid = Model:FindFirstChildOfClass("Humanoid")
+				local TargetRoot = Model:FindFirstChild("HumanoidRootPart")
+				if not (Player and Player ~= LocalPlayer and Humanoid and TargetRoot and Humanoid.Health > 0) then
 					continue
 				end
 				local UserStates = Model:FindFirstChild("UserStates")
-				local _sc6 = UserStates and UserStates:FindFirstChild("Infected")
-				local Infected = _sc6
-				local _sc7 = if _sc6 and typeof(Infected.Value) == "number" then Infected.Value / 100 else 0
-				local Percent = _sc7
-				local Weak = Humanoid.Health <= 10
-				local _sc9 = _sc7 >= 0.4 and Percent <= 0.85
-				if not (Weak or _sc9) then
+				local _sc5 = UserStates and UserStates:FindFirstChild("Infected")
+				local InfectedValue = _sc5
+				local _sc6 = if _sc5 and typeof(InfectedValue.Value) == "number" then InfectedValue.Value / 100 else 0
+				local Infection = _sc6
+				local Weak = Humanoid.Health / math.max(Humanoid.MaxHealth, 1) * 100 <= AlertWeakPercent
+				local _sc8 = _sc6 >= 0.4 and Infection <= 0.85
+				if not (Weak or _sc8) then
 					continue
 				end
-				local Screen = Camera:WorldToViewportPoint(TargetRoot.Position + Vector3.new(0, 2.5, 0))
-				local X, Y = Screen.X, Screen.Y
+				local Screen, OnScreen = Camera:WorldToViewportPoint(TargetRoot.Position + Vector3.new(0, 3, 0))
+				local Margin = 48
+				local Direction = Vector2.new(Screen.X, Screen.Y) - Center
 				if Screen.Z <= 0 then
-					local Direction = Vector2.new(X, Y) - Center
-					if Direction.Magnitude < 1 then
-						Direction = Vector2.new(0, 1)
-					end
-					Direction = Direction.Unit
-					X = Center.X + Direction.X * Viewport.X
-					Y = Center.Y + Direction.Y * Viewport.Y
+					Direction = -Direction
 				end
-				X = math.clamp(X, 50, Viewport.X - 50)
-				Y = math.clamp(Y, 50, Viewport.Y - 50)
+				if Direction.Magnitude < 1 then
+					Direction = Vector2.new(0, -1)
+				end
+				Direction = Direction.Unit
+				local Perp = Vector2.new(-Direction.Y, Direction.X)
+				local _sc9 = OnScreen
+					and Screen.X > Margin
+					and Screen.Y > Margin
+					and Screen.X < Viewport.X - Margin
+					and Screen.Y < Viewport.Y - Margin
+				local Anchor, LabelY
 				Used += 1
 				local Entry = EnsureAlert(Used)
-				local Color = if Weak then PlayerConfig.LowHealthColor else PlayerConfig.InfectionColor
-				local _sc11 = if Weak then string.format("%s  %d HP", Player.DisplayName, math.ceil(Humanoid.Health)) else string.format("%s  %d%%", Player.DisplayName, math.floor(Percent * 100 + 0.5))
-				Entry.Dot.Color = Color
-				local DotSize = Scaled(6)
-				local DotHalf = DotSize * 0.5
-				Entry.Dot.Position = Vector2.new(X - DotHalf, Y - DotHalf)
-				Entry.Dot.Size = Vector2.new(DotSize, DotSize)
-				Entry.Dot.Visible = true
+				if _sc9 then
+					Anchor = Vector2.new(Screen.X, Screen.Y)
+					Entry.Arrow.PointA = Anchor + Vector2.new(0, -3)
+					Entry.Arrow.PointB = Anchor + Vector2.new(6, -13)
+					Entry.Arrow.PointC = Anchor + Vector2.new(-6, -13)
+					LabelY = Anchor.Y - Scaled(20)
+				else
+					local HalfWidth = math.max(16, Viewport.X * 0.5 - Margin)
+					local HalfHeight = math.max(16, Viewport.Y * 0.5 - Margin)
+					local Scale = math.huge
+					if math.abs(Direction.X) > 0.001 then
+						Scale = math.min(Scale, HalfWidth / math.abs(Direction.X))
+					end
+					if math.abs(Direction.Y) > 0.001 then
+						Scale = math.min(Scale, HalfHeight / math.abs(Direction.Y))
+					end
+					Anchor = Center + Direction * Scale
+					Entry.Arrow.PointA = Anchor + Direction * 10
+					Entry.Arrow.PointB = Anchor - Direction * 3 + Perp * 6
+					Entry.Arrow.PointC = Anchor - Direction * 3 - Perp * 6
+					LabelY = (Anchor - Direction * Scaled(26)).Y
+				end
+				local Color = if Weak then DangerColor else PlayerConfig.InfectionColor
+				local _sc11 = if Weak then string.format("%s  %d HP", Player.DisplayName, math.ceil(Humanoid.Health)) else string.format("%s  %d%%", Player.DisplayName, math.floor(Infection * 100 + 0.5))
+				Entry.Arrow.Color = Color
+				Entry.Arrow.Visible = true
 				Entry.Text.Color = Color
 				Entry.Text.Text = string.upper(_sc11)
-				local Margin = Scaled(70)
-				Entry.Text.Position = Vector2.new(math.clamp(X, Margin, Viewport.X - Margin), math.max(Y - Scaled(17), Scaled(10)))
+				Entry.Text.Position = Vector2.new(math.clamp(Anchor.X, Scaled(80), Viewport.X - Scaled(80)), math.clamp(LabelY, Scaled(14), Viewport.Y - Scaled(20)))
 				Entry.Text.Visible = true
 			end
 		end
 		for Index = Used + 1, #AlertPool do
 			local Entry = AlertPool[Index]
-			Entry.Dot.Visible = false
+			Entry.Arrow.Visible = false
 			Entry.Text.Visible = false
 		end
 	end
@@ -872,12 +846,12 @@ do
 		if Unloaded then
 			return
 		end
-		if not _rl0[17] then
+		if not ChargeSpeed then
 			ClearChargeSpeed()
 			return
 		end
 		if SpeedModifier and SpeedModifier.Parent then
-			SpeedModifier.Value = _rl0[18]
+			SpeedModifier.Value = ChargeValue
 			ChargeRetries = 0
 			return
 		end
@@ -895,7 +869,7 @@ do
 		end
 		if Success then
 			local Added, Modifier = pcall(function()
-				return Result.AddModifier("Charge", _rl0[18], 100)
+				return Result.AddModifier("Charge", ChargeValue, 100)
 			end)
 			if Added and typeof(Modifier) == "Instance" then
 				SpeedModifier = Modifier
@@ -912,9 +886,9 @@ do
 			task.delay(0.25, ApplyChargeSpeed)
 		end
 	end
-	_rl0[42] = false
+	_rl0[39] = false
 	local function SpoofGrabPosition()
-		if Unloaded or not _rl0[42] then
+		if Unloaded or not _rl0[39] then
 			return
 		end
 		local Character = LocalPlayer.Character
@@ -985,9 +959,9 @@ do
 			Buff.Value = Target
 		end
 	end
-	_rl0[74] = LocalPlayer.Character
-	if _rl0[74] then
-		_rl0[74]:SetAttribute("SwingSpeedScalar", nil)
+	_rl0[71] = LocalPlayer.Character
+	if _rl0[71] then
+		_rl0[71]:SetAttribute("SwingSpeedScalar", nil)
 	end
 	local NearPlane = 0.1
 	local ProjectCorners = table.create(8)
@@ -1088,19 +1062,19 @@ do
 		local Text = Drawing.new("Text")
 		TextBase[Text] = TextSize
 		Text.Size = Scaled(TextSize)
-		Text.Font = _rl0[72]
+		Text.Font = _rl0[69]
 		Text.Center = true
 		Text.Outline = true
 		Text.OutlineColor = Color3.new(0, 0, 0)
 		Text.Visible = false
 		return Text
 	end
-	_rl0[40] = setmetatable({}, { __mode = "k" })
+	_rl0[37] = setmetatable({}, { __mode = "k" })
 	local function Set(Target, Prop, Value)
-		local Memo = _rl0[40][Target]
+		local Memo = _rl0[37][Target]
 		if not Memo then
 			Memo = {}
-			_rl0[40][Target] = Memo
+			_rl0[37][Target] = Memo
 		end
 		if Memo[Prop] ~= Value then
 			Memo[Prop] = Value
@@ -1223,7 +1197,7 @@ do
 			end)
 		end
 	end
-	_rl0[75] = 0
+	_rl0[72] = 0
 	local function GetEntry(Model, Kind, Store)
 		local TrackedStore = Store or Tracked
 		local Entry = TrackedStore[Model]
@@ -1232,10 +1206,10 @@ do
 			Entry = nil
 		end
 		if not Entry then
-			if _rl0[75] <= 0 then
+			if _rl0[72] <= 0 then
 				return nil
 			end
-			_rl0[75] -= 1
+			_rl0[72] -= 1
 			Entry = MakeEntry(Kind)
 			TrackedStore[Model] = Entry
 		end
@@ -1354,8 +1328,8 @@ do
 			local Pin = UserStates:FindFirstChild("Pin")
 			if Pin and typeof(Pin.Value) == "string" and Pin.Value ~= "None" and Pin.Value ~= "" then
 				local insert = table.insert
-				local _t3887 = _rl0[38][Pin.Value]
-				insert(Statuses, { Text = _t3887 or Pin.Value, Color = PlayerConfig.PinnedColor })
+				local _t3896 = _rl0[35][Pin.Value]
+				insert(Statuses, { Text = _t3896 or Pin.Value, Color = PlayerConfig.PinnedColor })
 			end
 		end
 		if PlayerConfig.Burning then
@@ -1457,7 +1431,8 @@ do
 		local Far = Kind == "zombie" and Distance > 150
 		local Label, Type
 		if Kind == "zombie" then
-			if Cached and Cached.Kind == Kind and Cached.ZLabel and View.Now - Cached.SlowAt < 1 then
+			local _sc8 = Cached and Cached.Kind == Kind and Cached.ZLabel and View.Now - Cached.SlowAt < 1
+			if _sc8 then
 				Type = Cached.ZType
 				Label = Cached.ZLabel
 			else
@@ -1465,7 +1440,7 @@ do
 				local _sc8 = Type == nil and Model.Name
 				local TypeName = _sc8
 				if not _sc8 then
-					TypeName = _rl0[35][Type] or tostring(Type)
+					TypeName = _rl0[32][Type] or tostring(Type)
 				end
 				Label = TypeName
 			end
@@ -1496,19 +1471,10 @@ do
 			end
 		end
 		local CenterX = (MinX + MaxX) * 0.5
-		local AlertNameColor = Config.NameColor
-		local AlertChamsColor = Config.ChamsColor
-		if Kind ~= "zombie" and Config.LowHealth then
-			local MaxHealth = HumanoidInstance.MaxHealth
-			if MaxHealth > 0 and HumanoidInstance.Health / MaxHealth * 100 <= Config.LowHealthThreshold then
-				AlertNameColor = Config.LowHealthColor
-				AlertChamsColor = Config.LowHealthColor
-			end
-		end
 		if RootPos then
-			local _sc9 = Far and math.floor(Distance / 5) * 5
-			local FinalDistance = _sc9
-			Distance = if _sc9 then FinalDistance else math.floor(Distance)
+			local _sc8 = Far and math.floor(Distance / 5) * 5
+			local FinalDistance = _sc8
+			Distance = if _sc8 then FinalDistance else math.floor(Distance)
 		end
 		local DistLabel = string.format("%dm", Distance)
 		local GuiLabel = if Config.Distance then string.format("%s [%dm]", Label, Distance) else Label
@@ -1558,9 +1524,9 @@ do
 				for Index = 1, 4 do
 					local X = (Index == 1 or Index == 3) and Left or Right
 					local Y = Index <= 2 and Top or Bottom
-					local _sc11 = Index <= 2 and 1 or -1
+					local _sc10 = Index <= 2 and 1 or -1
 					local OriginX = X + ((Index == 1 or Index == 3) and 1 or -1) * 1.5
-					local OriginY = Y + _sc11 * 1.5
+					local OriginY = Y + _sc10 * 1.5
 					local Horizontal = Corners[Index * 2 - 1]
 					local Vertical = Corners[Index * 2]
 					Set(Horizontal, "Color", BoxColor)
@@ -1568,7 +1534,7 @@ do
 					Set(Horizontal, "To", Vector2.new(X + ((Index == 1 or Index == 3) and 1 or -1) * Length, OriginY))
 					Set(Vertical, "Color", BoxColor)
 					Set(Vertical, "From", Vector2.new(OriginX, OriginY))
-					Set(Vertical, "To", Vector2.new(OriginX, Y + _sc11 * Length))
+					Set(Vertical, "To", Vector2.new(OriginX, Y + _sc10 * Length))
 				end
 			end
 		end
@@ -1611,10 +1577,10 @@ do
 			Set(Entry.NameText, "Visible", ShowName)
 			if ShowName then
 				Set(Entry.NameText, "Text", string.upper(Label))
-				Set(Entry.NameText, "Color", AlertNameColor)
+				Set(Entry.NameText, "Color", Config.NameColor)
 				Set(Entry.NameText, "Position", Vector2.new(CenterX, NameY))
 			end
-			table.insert(_rl0[41], Vector2.new(CenterX, MinY))
+			table.insert(_rl0[38], Vector2.new(CenterX, MinY))
 			Set(Entry.DistText, "Visible", ShowDist)
 			if ShowDist then
 				Set(Entry.DistText, "Color", Entry.DistColor)
@@ -1629,13 +1595,13 @@ do
 			if ShowBar then
 				local Height = math.max(4, MaxY - MinY)
 				local MaxHealth = HumanoidInstance.MaxHealth
-				local _sc12 = if MaxHealth > 0 then math.clamp(HumanoidInstance.Health / MaxHealth, 0, 1) else 0
+				local _sc11 = if MaxHealth > 0 then math.clamp(HumanoidInstance.Health / MaxHealth, 0, 1) else 0
 				local BarX = math.floor(MinX) - 7
-				local FillHeight = math.max(0, Height * _sc12)
+				local FillHeight = math.max(0, Height * _sc11)
 				Set(Entry.HpBack, "Transparency", 0.62)
 				Set(Entry.HpBack, "Position", Vector2.new(BarX - 1, MinY - 1))
 				Set(Entry.HpBack, "Size", Vector2.new(6, Height + 2))
-				Set(Entry.HpFill, "Color", HealthTint(_sc12))
+				Set(Entry.HpFill, "Color", HealthTint(_sc11))
 				Set(Entry.HpFill, "Position", Vector2.new(BarX, MaxY - FillHeight))
 				Set(Entry.HpFill, "Size", Vector2.new(4, FillHeight))
 			end
@@ -1659,16 +1625,16 @@ do
 				Set(NameLabel, "Size", UDim2.new(1, 0, 0, NameHeight))
 				if ShowGuiName then
 					Set(NameLabel, "Text", GuiLabel)
-					Set(NameLabel, "TextColor3", AlertNameColor)
+					Set(NameLabel, "TextColor3", Config.NameColor)
 				end
 				local StatusLabel = Entry.Gui.StatusLabel
 				local StatusText = ""
 				local StatusColor = Config.NameColor
 				if Config.Infection then
 					local UserStates = Model:FindFirstChild("UserStates")
-					local _sc14 = UserStates and UserStates:FindFirstChild("Infected")
-					local Infected = _sc14
-					if _sc14 and typeof(Infected.Value) == "number" and Infected.Value > 0 then
+					local _sc13 = UserStates and UserStates:FindFirstChild("Infected")
+					local Infected = _sc13
+					if _sc13 and typeof(Infected.Value) == "number" and Infected.Value > 0 then
 						StatusText = string.format("Infection %d%%", math.floor(Infected.Value + 0.5))
 						StatusColor = Config.InfectionColor
 					end
@@ -1680,19 +1646,19 @@ do
 				Set(StatusLabel, "Size", UDim2.new(1, 0, 0, Scaled(14)))
 				Set(StatusLabel, "Position", UDim2.fromOffset(0, NameHeight + Scaled(2)))
 				Set(StatusLabel, "Visible", ShowGuiStatus)
-				local _sc14 = ShowGuiStatus
+				local _sc13 = ShowGuiStatus
 				local Holder = Entry.Gui.Holder
 				local fromOffset = UDim2.fromOffset
-				local _t5105 = Scaled(150)
-				local _t5112 = NameHeight + Scaled(2)
+				local _t5085 = Scaled(150)
+				local _t5092 = NameHeight + Scaled(2)
 				if ShowGuiStatus then
 					local Set_v1 = Set
 					local UDim2_v1 = UDim2
 					local Scaled_v1 = Scaled
 					local Scaled_v2 = Scaled
-					_sc14 = Scaled(16)
+					_sc13 = Scaled(16)
 				end
-				Set(Holder, "Size", fromOffset(_t5105, _t5112 + (_sc14 or 0)))
+				Set(Holder, "Size", fromOffset(_t5085, _t5092 + (_sc13 or 0)))
 				Set(Entry.Gui.Holder, "Enabled", ShowGuiName)
 			elseif Entry.Gui and Entry.Gui.Holder then
 				Set(Entry.Gui.Holder, "Enabled", false)
@@ -1701,16 +1667,16 @@ do
 		if Config.Chams then
 			local Target = GetVisual(Model)
 			local Highlight = EnsureHighlight(Entry, Target)
-			local HighlightColor = AlertChamsColor
+			local HighlightColor = Config.ChamsColor
 			if Kind == "zombie" then
 				HighlightColor = ZombieColors[Type] or Config.ChamsColor
 			end
 			Set(Highlight, "FillColor", HighlightColor)
 			Set(Highlight, "OutlineColor", HighlightColor)
 			Set(Highlight, "Enabled", true)
-			local _sc10 = Entry.SuppressTarget ~= Target
-			_sc10 = _sc10 or View.Now - (Entry.SuppressAt or 0) >= 0.25
-			if _sc10 then
+			local _sc9 = Entry.SuppressTarget ~= Target
+			_sc9 = _sc9 or View.Now - (Entry.SuppressAt or 0) >= 0.25
+			if _sc9 then
 				Entry.SuppressTarget = Target
 				Entry.SuppressAt = View.Now
 				SuppressHighlights(Entry, Target, Highlight)
@@ -1783,7 +1749,7 @@ do
 			return
 		end
 		RefreshEspScale()
-		table.clear(_rl0[41])
+		table.clear(_rl0[38])
 		local _sc1_s1 = ZombieConfig.Enabled or PlayerConfig.Enabled
 		if not (_sc1_s1 or SurgeonConfig.Enabled) then
 			for Model, Entry in Tracked do
@@ -1807,8 +1773,7 @@ do
 			return
 		end
 		EspIdle = false
-		_rl0[75] = 12
-		local StartClock = os.clock()
+		_rl0[72] = 12
 		if ZombieConfig.Enabled then
 			RefreshVisuals()
 		end
@@ -1817,13 +1782,13 @@ do
 			return
 		end
 		local CamCF = Camera.CFrame
-		local View = _rl0[16]
-		_rl0[16].Camera = Camera
+		local View = _rl0[17]
+		_rl0[17].Camera = Camera
 		View.Position = CamCF.Position
 		View.Look = CamCF.LookVector
 		View.Viewport = Camera.ViewportSize
-		View.Now = Now
-		local Seen = _rl0[14]
+		View.Now = os.clock()
+		local Seen = _rl0[15]
 		table.clear(Seen)
 		if ZombieConfig.Enabled then
 			local Container = workspace:FindFirstChild("Zombies")
@@ -1850,7 +1815,7 @@ do
 				end
 			end
 		end
-		local SurgeonSeenThis = _rl0[15]
+		local SurgeonSeenThis = _rl0[16]
 		table.clear(SurgeonSeenThis)
 		if SurgeonConfig.Enabled then
 			local Container = workspace:FindFirstChild("Players")
@@ -1892,18 +1857,6 @@ do
 				SurgeonTracked[Model] = nil
 			end
 		end
-		local UpdateCost = os.clock() - StartClock
-		ESPEMA = ESPEMA + (UpdateCost - ESPEMA) * 0.25
-		local Step = 1
-		while Step < 4 and ESPEMA >= ESPStepAt[Step] do
-			Step += 1
-		end
-		if Step > LastESPStep then
-			LastESPStep = Step
-		elseif Step < LastESPStep and ESPEMA < ESPStepAt[LastESPStep - 1] * 0.75 then
-			LastESPStep = Step
-		end
-		LastESPInterval = 1 / _rl0[19][LastESPStep]
 	end
 	local function IsBarrel(Agent)
 		if not Agent then
@@ -1912,7 +1865,7 @@ do
 		return Agent:GetAttribute("Type") == "Barrel"
 	end
 	local BlastSpheres = setmetatable({}, { __mode = "k" })
-	_rl0[44] = 0
+	_rl0[41] = 0
 	local BlastSeen = {}
 	local function DestroyBlastSphere(Model)
 		local Part = BlastSpheres[Model]
@@ -1936,10 +1889,10 @@ do
 			return
 		end
 		local Now = time()
-		if Now - _rl0[44] < 0.1 then
+		if Now - _rl0[41] < 0.1 then
 			return
 		end
-		_rl0[44] = Now
+		_rl0[41] = Now
 		local Camera = workspace.CurrentCamera
 		local Container = workspace:FindFirstChild("Zombies")
 		if not Camera or not Container then
@@ -1995,16 +1948,16 @@ do
 		end
 	end
 	local HitboxParts = {}
-	_rl0[76] = 0
+	_rl0[73] = 0
 	local function RefreshHitboxParts()
 		local Now = time()
-		if Now - _rl0[76] < 0.05 then
+		if Now - _rl0[73] < 0.05 then
 			return
 		end
-		_rl0[76] = Now
+		_rl0[73] = Now
 		local Camera = workspace.CurrentCamera
 		local Container = workspace:FindFirstChild("Zombies")
-		local Names = _rl0[37][HitboxConfig.Part]
+		local Names = _rl0[34][HitboxConfig.Part]
 		local List = {}
 		if Camera and Container then
 			local Matched = {}
@@ -2036,7 +1989,7 @@ do
 		HitboxParts = List
 	end
 	local function InvalidateHitboxParts()
-		_rl0[76] = 0
+		_rl0[73] = 0
 	end
 	local function FindExpandedHit(Origin, Direction, Filter)
 		local Length = Direction.Magnitude
@@ -2118,7 +2071,7 @@ do
 			return true
 		end
 		local Type = Model:GetAttribute("Type")
-		local _sc1 = Type and _rl0[35][Type] or Model.Name
+		local _sc1 = Type and _rl0[32][Type] or Model.Name
 		return Config.Types[_sc1] == true
 	end
 	local function GetAimPart(Model)
@@ -2162,20 +2115,20 @@ do
 		end
 		return Best
 	end
-	_rl0[77] = 0
-	_rl0[45] = 0
+	_rl0[74] = 0
+	_rl0[42] = 0
 	local SilentTargetPosition
 	local ShoveRoot
 	local SilentTargetModel
-	_rl0[46] = 0
+	_rl0[43] = 0
 	local function SampleSilentTarget()
 		local Now = time()
-		if Now - _rl0[46] < 1 / 30 then
+		if Now - _rl0[43] < 1 / 30 then
 			return
 		end
-		_rl0[46] = Now
-		if Now - _rl0[45] > 1 then
-			_rl0[45] = Now
+		_rl0[43] = Now
+		if Now - _rl0[42] > 1 then
+			_rl0[42] = Now
 			local Ok, Value = pcall(function()
 				return LocalPlayer:GetNetworkPing()
 			end)
@@ -2183,14 +2136,14 @@ do
 				if Value > 1 then
 					Value = Value / 1000
 				end
-				_rl0[77] = math.clamp(Value, 0, 0.4)
+				_rl0[74] = math.clamp(Value, 0, 0.4)
 			else
 				Ok, Value = pcall(function()
-					local Item = _rl0[6].Network.ServerStatsItem["Data Ping"]
+					local Item = _rl0[7].Network.ServerStatsItem["Data Ping"]
 					return Item and Item:GetValue()
 				end)
 				if Ok and typeof(Value) == "number" then
-					_rl0[77] = math.clamp(Value / 1000, 0, 0.4)
+					_rl0[74] = math.clamp(Value / 1000, 0, 0.4)
 				end
 			end
 		end
@@ -2207,7 +2160,7 @@ do
 		end
 		local Root = Target.Model:FindFirstChild("HumanoidRootPart")
 		local _sc1_s1 = Root and Root.AssemblyLinearVelocity or Vector3.zero
-		SilentTargetPosition = Target.Position + _sc1_s1 * (_rl0[77] * 0.5)
+		SilentTargetPosition = Target.Position + _sc1_s1 * (_rl0[74] * 0.5)
 		SilentTargetModel = Target.Model.Parent and GetVisual(Target.Model) or nil
 	end
 	local function EnsureFOVCircle(Name)
@@ -2223,7 +2176,7 @@ do
 		end
 		return Circle
 	end
-	_rl0[78] = Color3.fromRGB(255, 170, 80)
+	_rl0[75] = Color3.fromRGB(255, 170, 80)
 	local TargetChams
 	local function UpdateFOVCircle(Name, Config, Color)
 		if not Config.Enabled or not Config.ShowFOV then
@@ -2249,7 +2202,7 @@ do
 			return
 		end
 		SampleSilentTarget()
-		UpdateFOVCircle("Silent", AimConfig.Silent, _rl0[78])
+		UpdateFOVCircle("Silent", AimConfig.Silent, _rl0[75])
 		if TargetChams and not TargetChams.Parent then
 			TargetChams = nil
 		end
@@ -2259,8 +2212,8 @@ do
 				TargetChams.Name = "UmberTargetChams"
 				TargetChams.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 			end
-			TargetChams.FillColor = _rl0[78]
-			TargetChams.OutlineColor = _rl0[78]
+			TargetChams.FillColor = _rl0[75]
+			TargetChams.OutlineColor = _rl0[75]
 			TargetChams.FillTransparency = 0.5
 			TargetChams.OutlineTransparency = 0
 			TargetChams.Parent = SilentTargetModel
@@ -2456,12 +2409,12 @@ do
 		PanicConfig.Enabled = On
 		if On then
 			local Saved = {}
-			for _, Name in ipairs(_rl0[33]) do
+			for _, Name in ipairs(_rl0[30]) do
 				local Toggle = LibraryToggles[Name]
 				Saved[Name] = Toggle ~= nil and Toggle.Value == true
 			end
 			PanicConfig.Saved = Saved
-			for _, Name in ipairs(_rl0[33]) do
+			for _, Name in ipairs(_rl0[30]) do
 				local Toggle = LibraryToggles[Name]
 				if Toggle and Toggle.Value then
 					Toggle:SetValue(false)
@@ -2470,7 +2423,7 @@ do
 		else
 			local Saved = PanicConfig.Saved
 			PanicConfig.Saved = {}
-			for _, Name in ipairs(_rl0[33]) do
+			for _, Name in ipairs(_rl0[30]) do
 				if Saved[Name] then
 					local Toggle = LibraryToggles[Name]
 					if Toggle and not Toggle.Value then
@@ -2485,7 +2438,7 @@ do
 	local SurgeonState
 	do
 		local HitboxVisuals = {}
-		_rl0[79] = 0
+		_rl0[76] = 0
 		local function ClearHitboxVisuals()
 			for _, Box in HitboxVisuals do
 				pcall(function()
@@ -2517,10 +2470,10 @@ do
 				return
 			end
 			local Now = time()
-			if Now - _rl0[79] < 0.05 then
+			if Now - _rl0[76] < 0.05 then
 				return
 			end
-			_rl0[79] = Now
+			_rl0[76] = Now
 			if not HitboxConfig.Show then
 				if next(HitboxVisuals) then
 					ClearHitboxVisuals()
@@ -2544,7 +2497,7 @@ do
 			end
 		end
 		local ProjectileTimers = setmetatable({}, { __mode = "k" })
-		_rl0[80] = 0
+		_rl0[77] = 0
 		local TimerColorHot = Color3.fromRGB(255, 70, 70)
 		local TimerColorCold = Color3.fromRGB(255, 170, 80)
 		local TrajectoryLines
@@ -2553,7 +2506,7 @@ do
 		local LearnedThrowSpeed = {}
 		local ThrowFilter = RaycastParams.new()
 		ThrowFilter.FilterType = Enum.RaycastFilterType.Exclude
-		_rl0[86] = {}
+		_rl0[83] = {}
 		local function ClearProjectileTimers()
 			for _, Entry in ProjectileTimers do
 				pcall(function()
@@ -2643,10 +2596,10 @@ do
 				end
 				return
 			end
-			if Now - _rl0[80] < 1 / 30 then
+			if Now - _rl0[77] < 1 / 30 then
 				return
 			end
-			_rl0[80] = Now
+			_rl0[77] = Now
 			local Camera = workspace.CurrentCamera
 			if not Camera then
 				return
@@ -2673,7 +2626,7 @@ do
 		end
 		local MortarFuseText
 		local MortarFuse
-		_rl0[81] = 0
+		_rl0[78] = 0
 		local function IsFuseLit(Tool)
 			local Lit = Tool:GetAttribute("FuseLit")
 			return Lit == true or Lit == "true"
@@ -2699,14 +2652,14 @@ do
 				end)
 			end
 			MortarHighlight = nil
-			_rl0[87] = nil
+			_rl0[84] = nil
 		end
 		local function UpdateMortarHighlight(Model, Remaining)
 			if not Model or not Model.Parent then
 				ClearMortarHighlight()
 				return
 			end
-			if _rl0[87] ~= Model then
+			if _rl0[84] ~= Model then
 				ClearMortarHighlight()
 				local Highlight = Instance.new("Highlight")
 				Highlight.Name = "UmberMortarChams"
@@ -2715,9 +2668,9 @@ do
 				Highlight.OutlineTransparency = 0
 				Highlight.Parent = Model
 				MortarHighlight = Highlight
-				_rl0[87] = Model
+				_rl0[84] = Model
 			end
-			local TimerColor = Remaining < 1 and _rl0[28] or _rl0[29]
+			local TimerColor = Remaining < 1 and DangerColor or _rl0[26]
 			MortarHighlight.FillColor = TimerColor
 			MortarHighlight.OutlineColor = TimerColor
 			MortarHighlight.Enabled = true
@@ -2745,7 +2698,7 @@ do
 			if not MortarFuse or MortarFuse.Tool ~= Tool then
 				MortarFuse = { Tool = Tool, Started = workspace:GetServerTimeNow() }
 			end
-			local Remaining = _rl0[26] - (workspace:GetServerTimeNow() - MortarFuse.Started)
+			local Remaining = _rl0[24] - (workspace:GetServerTimeNow() - MortarFuse.Started)
 			if Remaining <= 0 then
 				ClearMortarHighlight()
 				if MortarFuseText then
@@ -2754,10 +2707,10 @@ do
 				return
 			end
 			local Now = time()
-			if Now - _rl0[81] < 0.05 then
+			if Now - _rl0[78] < 0.05 then
 				return
 			end
-			_rl0[81] = Now
+			_rl0[78] = Now
 			if not MortarFuseText then
 				MortarFuseText = CreateText(20)
 			end
@@ -2777,7 +2730,7 @@ do
 			end
 			Set(MortarFuseText, "Visible", true)
 			Set(MortarFuseText, "Text", string.format("%.1f", Remaining))
-			Set(MortarFuseText, "Color", Remaining < 1 and _rl0[28] or _rl0[29])
+			Set(MortarFuseText, "Color", Remaining < 1 and DangerColor or _rl0[26])
 			Set(MortarFuseText, "Position", Position)
 		end
 		local function EnsureTrajectoryLines()
@@ -2860,16 +2813,16 @@ do
 		end
 		local TrajectoryColor = Color3.fromRGB(255, 170, 80)
 		local TrajectoryColorEnd = Color3.fromRGB(255, 240, 170)
-		_rl0[82] = 0
+		_rl0[79] = 0
 		local function IsThrowableTool(Tool)
-			if _rl0[25][Tool.Name] or LearnedThrowSpeed[Tool.Name] then
+			if _rl0[23][Tool.Name] or LearnedThrowSpeed[Tool.Name] then
 				return true
 			end
 			local Configuration = Tool:FindFirstChild("Configuration")
 			if not Configuration then
 				return false
 			end
-			for _, Name in ipairs(_rl0[24]) do
+			for _, Name in ipairs(_rl0[22]) do
 				if Configuration:GetAttribute(Name) ~= nil then
 					return true
 				end
@@ -2882,7 +2835,7 @@ do
 			end
 			local Configuration = Tool:FindFirstChild("Configuration")
 			if Configuration then
-				for _, Name in ipairs(_rl0[23]) do
+				for _, Name in ipairs(_rl0[21]) do
 					local Value = Configuration:GetAttribute(Name)
 					if typeof(Value) == "number" and Value >= 10 then
 						return Value
@@ -2892,13 +2845,13 @@ do
 			return LearnedThrowSpeed[Tool.Name] or 55
 		end
 		local MobilePlayer
-		_rl0[83] = 0
+		_rl0[80] = 0
 		local function IsMobilePlayer()
 			local Now = time()
-			if MobilePlayer ~= nil and Now - _rl0[83] < 2 then
+			if MobilePlayer ~= nil and Now - _rl0[80] < 2 then
 				return MobilePlayer
 			end
-			_rl0[83] = Now
+			_rl0[80] = Now
 			MobilePlayer = LocalPlayer:GetAttribute("Mobile") == true
 			if not MobilePlayer then
 				local PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
@@ -2926,10 +2879,10 @@ do
 				return
 			end
 			local Now = time()
-			if Now - _rl0[82] < 1 / 30 then
+			if Now - _rl0[79] < 1 / 30 then
 				return
 			end
-			_rl0[82] = Now
+			_rl0[79] = Now
 			local Character = LocalPlayer.Character
 			local _sc1 = Character and Character:FindFirstChildOfClass("Tool")
 			local Tool = _sc1
@@ -2952,7 +2905,7 @@ do
 			if IsMobilePlayer() then
 				Velocity = Camera.CFrame.LookVector * Speed
 			else
-				local Target = _rl0[30].Hit.Position
+				local Target = _rl0[27].Hit.Position
 				if typeof(Target) ~= "Vector3" then
 					HideTrajectory()
 					return
@@ -2969,12 +2922,12 @@ do
 			local Lines = EnsureTrajectoryLines()
 			local Gravity = Vector3.new(0, -workspace.Gravity, 0)
 			local Point = Origin.Position
-			local Step = _rl0[27]
+			local Step = _rl0[25]
 			local Count = 0
 			local Hit = false
-			_rl0[86][1] = Character
-			_rl0[86][2] = Camera
-			ThrowFilter.FilterDescendantsInstances = _rl0[86]
+			_rl0[83][1] = Character
+			_rl0[83][2] = Camera
+			ThrowFilter.FilterDescendantsInstances = _rl0[83]
 			for Index = 1, TrajectorySegments do
 				local Next = Point + Velocity * Step + Gravity * (0.5 * Step * Step)
 				local Result = workspace:Raycast(Point, Next - Point, ThrowFilter)
@@ -3068,7 +3021,7 @@ do
 							return
 						end
 						Track(Animator.AnimationPlayed:Connect(function(SwingTrack)
-							if not _rl0[31].AutoJump then
+							if not _rl0[28].AutoJump then
 								return
 							end
 							local _sc3 = SwingTrack and SwingTrack.Name
@@ -3123,17 +3076,17 @@ do
 			Track(LocalPlayer.CharacterAdded:Connect(BindCharacter))
 			BindCharacter()
 		end
-		_rl0[84] = 0
+		_rl0[81] = 0
 		do
 			local function UpdateAutoBuild()
 				if not ClassConfig.AutoBuild or Unloaded then
 					return
 				end
 				local Now = tick()
-				if Now - _rl0[84] < 0.5 then
+				if Now - _rl0[81] < 0.5 then
 					return
 				end
-				_rl0[84] = Now
+				_rl0[81] = Now
 				local Character = LocalPlayer.Character
 				local _sc1 = Character and Character:FindFirstChild("HumanoidRootPart")
 				local Root = _sc1
@@ -3395,7 +3348,7 @@ do
 				local Path = SurgeonState.Path
 				if not Path then
 					local OkPath, Created = pcall(function()
-						return _rl0[7]:CreatePath({ AgentRadius = 2, AgentHeight = 5, AgentCanJump = true, AgentJumpHeight = 7, AgentMaxSlope = 50 })
+						return _rl0[8]:CreatePath({ AgentRadius = 2, AgentHeight = 5, AgentCanJump = true, AgentJumpHeight = 7, AgentMaxSlope = 50 })
 					end)
 					if not OkPath or not Created then
 						return nil
@@ -3514,9 +3467,9 @@ do
 				SurgeonState.HealTarget = Target.Model
 				SurgeonState.HealHealth = Health
 			end
-			_rl0[85] = { Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, Enum.KeyCode.Up, Enum.KeyCode.Down }
+			_rl0[82] = { Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, Enum.KeyCode.Up, Enum.KeyCode.Down }
 			local function SurgeonUserMoving()
-				for _, Key in ipairs(_rl0[85]) do
+				for _, Key in ipairs(_rl0[82]) do
 					if UserInputService:IsKeyDown(Key) then
 						return true
 					end
@@ -3570,7 +3523,7 @@ do
 				end
 				SurgeonHeal(Root, Character, Target, os.clock())
 			end
-			_rl0[88] = { Fife = true, FifeNew = true, Drum = true, Drums = true }
+			_rl0[85] = { Fife = true, FifeNew = true, Drum = true, Drums = true }
 			local function FindInstrument(Tool)
 				if typeof(filtergc) ~= "function" then
 					return nil
@@ -3601,7 +3554,7 @@ do
 				local Character = LocalPlayer.Character
 				local _sc2 = Character and Character:FindFirstChildOfClass("Tool")
 				local Tool = _sc2
-				if not _sc2 or not _rl0[88][Tool.Name] then
+				if not _sc2 or not _rl0[85][Tool.Name] then
 					MusicianState.Instrument = nil
 					MusicianState.Tool = nil
 					return
@@ -3652,11 +3605,11 @@ do
 				UpdateSilentAim()
 				UpdateAutoBuild()
 				UpdateSurgeon(Delta)
-				local Now = os.clock()
-				if Now - _rl0[20] < LastESPInterval then
+				VisualAccumulator += Delta
+				if VisualAccumulator < _rl0[18] then
 					return
 				end
-				_rl0[20] = Now
+				VisualAccumulator = VisualAccumulator % _rl0[18]
 				UpdateESP()
 				UpdateHitboxVisuals()
 				UpdateThrowables()
@@ -3665,22 +3618,22 @@ do
 				UpdateWaypoints()
 				UpdateAlertMarkers()
 			end
-			Track(RunService.RenderStepped:Connect(UpdateFrame))
+			Track(_rl0[6].RenderStepped:Connect(UpdateFrame))
 		end
 		do
 			local function UpdateHeartbeat()
 				ApplySwingSpeed()
 				SpoofGrabPosition()
-				if (MiscConfig.AntiBrokenLegs or MiscConfig.NoFallDamage) and os.clock() >= _rl0[43] then
-					_rl0[43] = os.clock() + 1
+				if (MiscConfig.AntiBrokenLegs or MiscConfig.NoFallDamage) and os.clock() >= _rl0[40] then
+					_rl0[40] = os.clock() + 1
 					ApplyCharacterGuards(false)
 				end
-				if _rl0[32].NoRecoil and os.clock() >= _rl0[21] then
-					_rl0[21] = os.clock() + 1
+				if _rl0[29].NoRecoil and os.clock() >= _rl0[19] then
+					_rl0[19] = os.clock() + 1
 					SetNoRecoil(true)
 				end
 			end
-			Track(RunService.Heartbeat:Connect(UpdateHeartbeat))
+			Track(_rl0[6].Heartbeat:Connect(UpdateHeartbeat))
 		end
 		local function Cleanup()
 			Unloaded = true
@@ -3697,7 +3650,7 @@ do
 				WaypointText:Destroy()
 				WaypointDist:Destroy()
 				for _, Entry in AlertPool do
-					Entry.Dot:Destroy()
+					Entry.Arrow:Destroy()
 					Entry.Text:Destroy()
 				end
 				table.clear(AlertPool)
@@ -3718,9 +3671,6 @@ do
 			table.clear(Tracked)
 			table.clear(Visuals)
 			table.clear(FuseMarks)
-			ESPEMA = 0
-			LastESPStep = 1
-			LastESPInterval = 1 / 30
 			ClearHitboxVisuals()
 			RemoveHitboxHook()
 			ClearProjectileTimers()
@@ -3780,63 +3730,63 @@ do
 		Library:Unload()
 	end
 	do
-		_rl0[89] = Pace(_rl0[9].Main:AddGroupbox({ Name = "Safety", Side = "Right", IconName = "shield" }))
-		_rl0[89]:AddToggle("PanicSwitch", { Text = "Panic Switch",
+		_rl0[86] = Pace(_rl0[10].Main:AddGroupbox({ Name = "Safety", Side = "Right", IconName = "shield" }))
+		_rl0[86]:AddToggle("PanicSwitch", { Text = "Panic Switch",
 			Tooltip = "Drops every cheat that talks to the server and removes the hook. Switching it off puts back exactly what was on.",
 			Default = false,
 			["Callback"] = function(Value)
 				ApplyPanic(Value)
 			end
 		})
-		_rl0[89]:AddLabel({ Text = "Silent Aim, Hitbox Expander, Auto Headshot, Swing Speed and Shove Expander.",
+		_rl0[86]:AddLabel({ Text = "Silent Aim, Hitbox Expander, Auto Headshot, Swing Speed and Shove Expander.",
 			DoesWrap = true, Size = 12
 		})
 	end
-	_rl0[48] = Pace(_rl0[9].Player:AddGroupbox({ Name = "Movement", Side = "Left", IconName = "footprints" }))
-	_rl0[48]:AddToggle("WalkSpeedToggle", { Text = "Walkspeed Toggle",
+	_rl0[45] = Pace(_rl0[10].Player:AddGroupbox({ Name = "Movement", Side = "Left", IconName = "footprints" }))
+	_rl0[45]:AddToggle("WalkSpeedToggle", { Text = "Walkspeed Toggle",
 		Tooltip = "Borrows the game's Charge speed buff so your speed holds through swings and reloads.",
 		Default = false,
 		["Callback"] = function(Value)
-			_rl0[17] = Value
+			ChargeSpeed = Value
 			ApplyChargeSpeed()
 		end
 	})
-	_rl0[48]:AddSlider("WalkSpeedValue", { AllowRightClickInput = true, Text = "Walk Speed",
+	_rl0[45]:AddSlider("WalkSpeedValue", { AllowRightClickInput = true, Text = "Walk Speed",
 		Tooltip = "How fast you move while the toggle is on.", Default = 55, Min = 16, Max = 70,
 		Rounding = 0,
 		["Callback"] = function(Value)
-			_rl0[18] = Value
-			if _rl0[17] then
+			ChargeValue = Value
+			if ChargeSpeed then
 				ApplyChargeSpeed()
 			end
 		end
 	})
-	_rl0[49] = Pace(_rl0[9].Player:AddGroupbox({ Name = "Protection", Side = "Right", IconName = "shield" }))
-	_rl0[49]:AddToggle("AntiGrab", { Text = "Anti Grab", Tooltip = "Moves you out of grab range on paper so shamblers can't latch on.",
+	_rl0[46] = Pace(_rl0[10].Player:AddGroupbox({ Name = "Protection", Side = "Right", IconName = "shield" }))
+	_rl0[46]:AddToggle("AntiGrab", { Text = "Anti Grab", Tooltip = "Moves you out of grab range on paper so shamblers can't latch on.",
 		Default = false,
 		["Callback"] = function(Value)
-			_rl0[42] = Value
+			_rl0[39] = Value
 		end
 	})
-	_rl0[50] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "ESP", Side = "Left", IconName = "scan-eye" }))
-	_rl0[50]:AddToggle("ZombieESP", { Text = "Zombie ESP", Tooltip = "Turns on all the zombie visuals.", Default = false,
+	_rl0[47] = Pace(_rl0[10].Visuals:AddGroupbox({ Name = "ESP", Side = "Left", IconName = "scan-eye" }))
+	_rl0[47]:AddToggle("ZombieESP", { Text = "Zombie ESP", Tooltip = "Turns on all the zombie visuals.", Default = false,
 		["Callback"] = function(Value)
 			ZombieConfig.Enabled = Value
 		end
 	})
-	_rl0[50]:AddToggle("PlayerESP", { Text = "Player ESP", Tooltip = "Turns on all the player visuals.", Default = false,
+	_rl0[47]:AddToggle("PlayerESP", { Text = "Player ESP", Tooltip = "Turns on all the player visuals.", Default = false,
 		["Callback"] = function(Value)
 			PlayerConfig.Enabled = Value
 		end
 	})
-	_rl0[50]:AddDropdown("PlayerESPTarget", { Values = { "Other Players", "Self", "Both" }, Default = "Other Players", Text = "Player ESP Target",
+	_rl0[47]:AddDropdown("PlayerESPTarget", { Values = { "Other Players", "Self", "Both" }, Default = "Other Players", Text = "Player ESP Target",
 		Tooltip = "Who the player ESP draws.",
 		["Callback"] = function(Value)
 			PlayerConfig.Target = Value
 		end
 	})
-	_rl0[51] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Zombie ESP Options", Side = "Left", IconName = "crosshair" }))
-	_rl0[51]:AddDropdown("ZombieType", { Values = _rl0[36], Default = { "All" }, Text = "Zombie Type",
+	_rl0[48] = Pace(_rl0[10].Visuals:AddGroupbox({ Name = "Zombie ESP Options", Side = "Left", IconName = "crosshair" }))
+	_rl0[48]:AddDropdown("ZombieType", { Values = _rl0[33], Default = { "All" }, Text = "Zombie Type",
 		Tooltip = "Only draw the types you tick.", Multi = true,
 		["Callback"] = function(Value)
 			local Types = {}
@@ -3846,7 +3796,7 @@ do
 			ZombieConfig.Types = Types
 		end
 	})
-	_rl0[51]:AddToggle("ZombieBox", { Text = "Box", Tooltip = "Box around each zombie.", Default = true,
+	_rl0[48]:AddToggle("ZombieBox", { Text = "Box", Tooltip = "Box around each zombie.", Default = true,
 		["Callback"] = function(Value)
 			ZombieConfig.Box = Value
 			if Value then
@@ -3854,13 +3804,13 @@ do
 			end
 		end
 	})
-	_rl0[51]:AddDropdown("ZombieBoxStyle", { Values = { "Box", "Corner", "Filled Box" }, Default = "Box", Text = "Box Style",
+	_rl0[48]:AddDropdown("ZombieBoxStyle", { Values = { "Box", "Corner", "Filled Box" }, Default = "Box", Text = "Box Style",
 		Tooltip = "Plain box, corner brackets, or a filled box.",
 		["Callback"] = function(Value)
 			ZombieConfig.BoxStyle = Value
 		end
 	})
-	_rl0[51]:AddToggle("ZombieChams", { Text = "Chams", Tooltip = "Colours the zombie itself.", Default = false,
+	_rl0[48]:AddToggle("ZombieChams", { Text = "Chams", Tooltip = "Colours the zombie itself.", Default = false,
 		["Callback"] = function(Value)
 			ZombieConfig.Chams = Value
 			if Value then
@@ -3868,7 +3818,7 @@ do
 			end
 		end
 	})
-	_rl0[51]:AddToggle("ZombieTracers", { Text = "Tracers", Tooltip = "Line from your screen to them.", Default = false,
+	_rl0[48]:AddToggle("ZombieTracers", { Text = "Tracers", Tooltip = "Line from your screen to them.", Default = false,
 		["Callback"] = function(Value)
 			ZombieConfig.Tracers = Value
 			if Value then
@@ -3880,7 +3830,7 @@ do
 			ZombieConfig.TracerColor = Value
 		end
 	})
-	_rl0[51]:AddToggle("ZombieNames", { Text = "Names", Tooltip = "Zombie type above the box.", Default = false,
+	_rl0[48]:AddToggle("ZombieNames", { Text = "Names", Tooltip = "Zombie type above the box.", Default = false,
 		["Callback"] = function(Value)
 			ZombieConfig.Names = Value
 			if Value then
@@ -3892,13 +3842,13 @@ do
 			ZombieConfig.NameColor = Value
 		end
 	})
-	_rl0[51]:AddDropdown("ZombieNameStyle", { Values = { "Text", "GUI", "Both" }, Default = "Text", Text = "Name Display",
+	_rl0[48]:AddDropdown("ZombieNameStyle", { Values = { "Text", "GUI", "Both" }, Default = "Text", Text = "Name Display",
 		Tooltip = "Text draws it, GUI is a label.",
 		["Callback"] = function(Value)
 			ZombieConfig.NameStyle = Value
 		end
 	})
-	_rl0[51]:AddToggle("ZombieHealth", { Text = "Health Bar", Tooltip = "Health number and/or bar.", Default = false,
+	_rl0[48]:AddToggle("ZombieHealth", { Text = "Health Bar", Tooltip = "Health number and/or bar.", Default = false,
 		["Callback"] = function(Value)
 			ZombieConfig.Health = Value
 			if Value then
@@ -3910,18 +3860,18 @@ do
 			ZombieConfig.HealthColor = Value
 		end
 	})
-	_rl0[51]:AddDropdown("ZombieHealthStyle", { Values = { "Bar", "Text", "Both" }, Default = "Both", Text = "Health Display",
+	_rl0[48]:AddDropdown("ZombieHealthStyle", { Values = { "Bar", "Text", "Both" }, Default = "Both", Text = "Health Display",
 		Tooltip = "Bar hugs the box, Text is the number above the name, Both shows both.",
 		["Callback"] = function(Value)
 			ZombieConfig.HealthStyle = Value
 		end
 	})
-	_rl0[51]:AddToggle("ZombieDistance", { Text = "Show Distance", Tooltip = "Distance in studs under the name.", Default = true,
+	_rl0[48]:AddToggle("ZombieDistance", { Text = "Show Distance", Tooltip = "Distance in studs under the name.", Default = true,
 		["Callback"] = function(Value)
 			ZombieConfig.Distance = Value
 		end
 	})
-	_rl0[51]:AddToggle("ZombieBomberTimer", { Text = "Bomber Timer", Tooltip = "Countdown before a bomber blows up.", Default = true,
+	_rl0[48]:AddToggle("ZombieBomberTimer", { Text = "Bomber Timer", Tooltip = "Countdown before a bomber blows up.", Default = true,
 		["Callback"] = function(Value)
 			ZombieConfig.BomberTimer = Value
 			if Value then
@@ -3933,25 +3883,25 @@ do
 			ZombieConfig.BomberTimerColor = Value
 		end
 	})
-	_rl0[51]:AddDropdown("ZombieBomberTimerPosition", { Values = { "Bottom", "Top", "Center", "Left", "Right" }, Default = "Bottom",
+	_rl0[48]:AddDropdown("ZombieBomberTimerPosition", { Values = { "Bottom", "Top", "Center", "Left", "Right" }, Default = "Bottom",
 		Text = "Timer Position", Tooltip = "Where the countdown sits.",
 		["Callback"] = function(Value)
 			ZombieConfig.BomberTimerPosition = Value
 		end
 	})
-	_rl0[51]:AddSlider("ZombieBomberTimerOffsetX", { AllowRightClickInput = true, Text = "Timer Offset X", Tooltip = "Nudge the timer left or right.",
+	_rl0[48]:AddSlider("ZombieBomberTimerOffsetX", { AllowRightClickInput = true, Text = "Timer Offset X", Tooltip = "Nudge the timer left or right.",
 		Default = 0, Min = -400, Max = 400, Rounding = 0,
 		["Callback"] = function(Value)
 			ZombieConfig.BomberTimerOffsetX = Value
 		end
 	})
-	_rl0[51]:AddSlider("ZombieBomberTimerOffsetY", { AllowRightClickInput = true, Text = "Timer Offset Y", Tooltip = "Nudge the timer up or down.",
+	_rl0[48]:AddSlider("ZombieBomberTimerOffsetY", { AllowRightClickInput = true, Text = "Timer Offset Y", Tooltip = "Nudge the timer up or down.",
 		Default = 0, Min = -400, Max = 400, Rounding = 0,
 		["Callback"] = function(Value)
 			ZombieConfig.BomberTimerOffsetY = Value
 		end
 	})
-	_rl0[51]:AddToggle("ZombieBlastRadius", { Text = "Bomber Blast Radius",
+	_rl0[48]:AddToggle("ZombieBlastRadius", { Text = "Bomber Blast Radius",
 		Tooltip = "Draws the explosion circle while a bomber is about to blow.", Default = true,
 		["Callback"] = function(Value)
 			ZombieConfig.BlastRadius = Value
@@ -3961,72 +3911,72 @@ do
 			ZombieConfig.BlastRadiusColor = Value
 		end
 	})
-	_rl0[52] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Zombie Colors", Side = "Left", IconName = "palette" }))
-	_rl0[63] = _rl0[52]:AddLabel("Shambler")
-	_rl0[63]:AddColorPicker("ZombieColorNormal", { Default = ZombieColors.Normal, Title = "Shambler Color",
+	_rl0[49] = Pace(_rl0[10].Visuals:AddGroupbox({ Name = "Zombie Colors", Side = "Left", IconName = "palette" }))
+	_rl0[60] = _rl0[49]:AddLabel("Shambler")
+	_rl0[60]:AddColorPicker("ZombieColorNormal", { Default = ZombieColors.Normal, Title = "Shambler Color",
 		["Callback"] = function(Value)
 			ZombieColors.Normal = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for shamblers.", nil, _rl0[63].TextLabel)
-	_rl0[64] = _rl0[52]:AddLabel("Runner")
-	_rl0[64]:AddColorPicker("ZombieColorFast", { Default = ZombieColors.Fast, Title = "Runner Color",
+	Library:AddTooltip("Box and chams colour for shamblers.", nil, _rl0[60].TextLabel)
+	_rl0[61] = _rl0[49]:AddLabel("Runner")
+	_rl0[61]:AddColorPicker("ZombieColorFast", { Default = ZombieColors.Fast, Title = "Runner Color",
 		["Callback"] = function(Value)
 			ZombieColors.Fast = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for runners.", nil, _rl0[64].TextLabel)
-	_rl0[65] = _rl0[52]:AddLabel("Bomber")
-	_rl0[65]:AddColorPicker("ZombieColorBarrel", { Default = ZombieColors.Barrel, Title = "Bomber Color",
+	Library:AddTooltip("Box and chams colour for runners.", nil, _rl0[61].TextLabel)
+	_rl0[62] = _rl0[49]:AddLabel("Bomber")
+	_rl0[62]:AddColorPicker("ZombieColorBarrel", { Default = ZombieColors.Barrel, Title = "Bomber Color",
 		["Callback"] = function(Value)
 			ZombieColors.Barrel = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for bombers.", nil, _rl0[65].TextLabel)
-	_rl0[66] = _rl0[52]:AddLabel("Sapper")
-	_rl0[66]:AddColorPicker("ZombieColorSapper", { Default = ZombieColors.Sapper, Title = "Sapper Color",
+	Library:AddTooltip("Box and chams colour for bombers.", nil, _rl0[62].TextLabel)
+	_rl0[63] = _rl0[49]:AddLabel("Sapper")
+	_rl0[63]:AddColorPicker("ZombieColorSapper", { Default = ZombieColors.Sapper, Title = "Sapper Color",
 		["Callback"] = function(Value)
 			ZombieColors.Sapper = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for sappers.", nil, _rl0[66].TextLabel)
-	_rl0[67] = _rl0[52]:AddLabel("Igniter")
-	_rl0[67]:AddColorPicker("ZombieColorIgniter", { Default = ZombieColors.Igniter, Title = "Igniter Color",
+	Library:AddTooltip("Box and chams colour for sappers.", nil, _rl0[63].TextLabel)
+	_rl0[64] = _rl0[49]:AddLabel("Igniter")
+	_rl0[64]:AddColorPicker("ZombieColorIgniter", { Default = ZombieColors.Igniter, Title = "Igniter Color",
 		["Callback"] = function(Value)
 			ZombieColors.Igniter = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for igniters.", nil, _rl0[67].TextLabel)
-	_rl0[68] = _rl0[52]:AddLabel("Cuirassier")
-	_rl0[68]:AddColorPicker("ZombieColorCuirassier", { Default = ZombieColors.Cuirassier, Title = "Cuirassier Color",
+	Library:AddTooltip("Box and chams colour for igniters.", nil, _rl0[64].TextLabel)
+	_rl0[65] = _rl0[49]:AddLabel("Cuirassier")
+	_rl0[65]:AddColorPicker("ZombieColorCuirassier", { Default = ZombieColors.Cuirassier, Title = "Cuirassier Color",
 		["Callback"] = function(Value)
 			ZombieColors.Cuirassier = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for cuirassiers.", nil, _rl0[68].TextLabel)
-	_rl0[69] = _rl0[52]:AddLabel("Crawler")
-	_rl0[69]:AddColorPicker("ZombieColorCrawler", { Default = ZombieColors.Crawler, Title = "Crawler Color",
+	Library:AddTooltip("Box and chams colour for cuirassiers.", nil, _rl0[65].TextLabel)
+	_rl0[66] = _rl0[49]:AddLabel("Crawler")
+	_rl0[66]:AddColorPicker("ZombieColorCrawler", { Default = ZombieColors.Crawler, Title = "Crawler Color",
 		["Callback"] = function(Value)
 			ZombieColors.Crawler = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for crawlers.", nil, _rl0[69].TextLabel)
-	_rl0[70] = _rl0[52]:AddLabel("Headless")
-	_rl0[70]:AddColorPicker("ZombieColorHeadless", { Default = ZombieColors.Headless, Title = "Headless Color",
+	Library:AddTooltip("Box and chams colour for crawlers.", nil, _rl0[66].TextLabel)
+	_rl0[67] = _rl0[49]:AddLabel("Headless")
+	_rl0[67]:AddColorPicker("ZombieColorHeadless", { Default = ZombieColors.Headless, Title = "Headless Color",
 		["Callback"] = function(Value)
 			ZombieColors.Headless = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for headless.", nil, _rl0[70].TextLabel)
-	_rl0[71] = _rl0[52]:AddLabel("Big Boy")
-	_rl0[71]:AddColorPicker("ZombieColorBigBoy", { Default = ZombieColors.BigBoy, Title = "Big Boy Color",
+	Library:AddTooltip("Box and chams colour for headless.", nil, _rl0[67].TextLabel)
+	_rl0[68] = _rl0[49]:AddLabel("Big Boy")
+	_rl0[68]:AddColorPicker("ZombieColorBigBoy", { Default = ZombieColors.BigBoy, Title = "Big Boy Color",
 		["Callback"] = function(Value)
 			ZombieColors.BigBoy = Value
 		end
 	})
-	Library:AddTooltip("Box and chams colour for big boys.", nil, _rl0[71].TextLabel)
-	_rl0[53] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Player ESP Options", Side = "Right", IconName = "users" }))
-	_rl0[53]:AddToggle("PlayerBox", { Text = "Box", Tooltip = "Box around each player.", Default = true,
+	Library:AddTooltip("Box and chams colour for big boys.", nil, _rl0[68].TextLabel)
+	_rl0[50] = Pace(_rl0[10].Visuals:AddGroupbox({ Name = "Player ESP Options", Side = "Right", IconName = "users" }))
+	_rl0[50]:AddToggle("PlayerBox", { Text = "Box", Tooltip = "Box around each player.", Default = true,
 		["Callback"] = function(Value)
 			PlayerConfig.Box = Value
 			if Value then
@@ -4038,13 +3988,13 @@ do
 			PlayerConfig.BoxColor = Value
 		end
 	})
-	_rl0[53]:AddDropdown("PlayerBoxStyle", { Values = { "Box", "Corner", "Filled Box" }, Default = "Box", Text = "Box Style",
+	_rl0[50]:AddDropdown("PlayerBoxStyle", { Values = { "Box", "Corner", "Filled Box" }, Default = "Box", Text = "Box Style",
 		Tooltip = "Plain box, corner brackets, or a filled box.",
 		["Callback"] = function(Value)
 			PlayerConfig.BoxStyle = Value
 		end
 	})
-	_rl0[53]:AddToggle("PlayerChams", { Text = "Chams", Tooltip = "Colours the player model.", Default = false,
+	_rl0[50]:AddToggle("PlayerChams", { Text = "Chams", Tooltip = "Colours the player model.", Default = false,
 		["Callback"] = function(Value)
 			PlayerConfig.Chams = Value
 			if Value then
@@ -4056,7 +4006,7 @@ do
 			PlayerConfig.ChamsColor = Value
 		end
 	})
-	_rl0[53]:AddToggle("PlayerTracers", { Text = "Tracers", Tooltip = "Line from your screen to them.", Default = false,
+	_rl0[50]:AddToggle("PlayerTracers", { Text = "Tracers", Tooltip = "Line from your screen to them.", Default = false,
 		["Callback"] = function(Value)
 			PlayerConfig.Tracers = Value
 			if Value then
@@ -4068,7 +4018,7 @@ do
 			PlayerConfig.TracerColor = Value
 		end
 	})
-	_rl0[53]:AddToggle("PlayerNames", { Text = "Names", Tooltip = "Display name above the box.", Default = false,
+	_rl0[50]:AddToggle("PlayerNames", { Text = "Names", Tooltip = "Display name above the box.", Default = false,
 		["Callback"] = function(Value)
 			PlayerConfig.Names = Value
 			if Value then
@@ -4080,13 +4030,13 @@ do
 			PlayerConfig.NameColor = Value
 		end
 	})
-	_rl0[53]:AddDropdown("PlayerNameStyle", { Values = { "Text", "GUI", "Both" }, Default = "Text", Text = "Name Display",
+	_rl0[50]:AddDropdown("PlayerNameStyle", { Values = { "Text", "GUI", "Both" }, Default = "Text", Text = "Name Display",
 		Tooltip = "Text draws it, GUI is a label.",
 		["Callback"] = function(Value)
 			PlayerConfig.NameStyle = Value
 		end
 	})
-	_rl0[53]:AddToggle("PlayerHealth", { Text = "Health Bar", Tooltip = "Health number and/or bar.", Default = false,
+	_rl0[50]:AddToggle("PlayerHealth", { Text = "Health Bar", Tooltip = "Health number and/or bar.", Default = false,
 		["Callback"] = function(Value)
 			PlayerConfig.Health = Value
 			if Value then
@@ -4098,31 +4048,14 @@ do
 			PlayerConfig.HealthColor = Value
 		end
 	})
-	_rl0[53]:AddDropdown("PlayerHealthStyle", { Values = { "Bar", "Text", "Both" }, Default = "Both", Text = "Health Display",
+	_rl0[50]:AddDropdown("PlayerHealthStyle", { Values = { "Bar", "Text", "Both" }, Default = "Both", Text = "Health Display",
 		Tooltip = "Bar hugs the box, Text is the number above the name, Both shows both.",
 		["Callback"] = function(Value)
 			PlayerConfig.HealthStyle = Value
 		end
 	})
-	_rl0[53]:AddToggle("PlayerLowHealth", { Text = "Low Health Color", Tooltip = "Turns names and chams red when someone is nearly dead.",
-		Default = true,
-		["Callback"] = function(Value)
-			PlayerConfig.LowHealth = Value
-		end
-	}):AddColorPicker("PlayerLowHealthColor", { Default = Color3.fromRGB(255, 70, 70), Title = "Low Health Color",
-		["Callback"] = function(Value)
-			PlayerConfig.LowHealthColor = Value
-		end
-	})
-	_rl0[53]:AddSlider("PlayerLowHealthThreshold", { AllowRightClickInput = true, Text = "Low Health Threshold",
-		Tooltip = "Health percent that counts as low.", Default = 35, Min = 5, Max = 100, Rounding = 0,
-		Suffix = "%",
-		["Callback"] = function(Value)
-			PlayerConfig.LowHealthThreshold = Value
-		end
-	})
-	_rl0[53]:AddToggle("PlayerAlerts", { Text = "Weak / Infected Alerts", Tooltip = "Pins teammates who are nearly dead or badly infected.",
-		Default = false,
+	_rl0[50]:AddToggle("PlayerAlerts", { Text = "Weak / Infected Alerts",
+		Tooltip = "Shows an arrow towards teammates who are badly hurt or badly infected.", Default = false,
 		["Callback"] = function(Value)
 			PlayerConfig.Alerts = Value
 			if Value then
@@ -4130,13 +4063,13 @@ do
 			end
 		end
 	})
-	_rl0[53]:AddToggle("PlayerDistance", { Text = "Show Distance", Tooltip = "Distance in studs under the name.", Default = true,
+	_rl0[50]:AddToggle("PlayerDistance", { Text = "Show Distance", Tooltip = "Distance in studs under the name.", Default = true,
 		["Callback"] = function(Value)
 			PlayerConfig.Distance = Value
 		end
 	})
-	_rl0[53]:AddDivider()
-	_rl0[47] = { 
+	_rl0[50]:AddDivider()
+	_rl0[44] = { 
 		{ Key = "Infection", Text = "Infection", Tooltip = "Shows infection percent.", Default = true,
 			Color = Color3.fromRGB(190, 70, 70)
 		},
@@ -4157,8 +4090,8 @@ do
 			Default = false, Color = Color3.fromRGB(180, 180, 255)
 		}
 	}
-	for _, Status in ipairs(_rl0[47]) do
-		_rl0[53]:AddToggle("Player" .. Status.Key, { Text = Status.Text, Tooltip = Status.Tooltip, Default = Status.Default,
+	for _, Status in ipairs(_rl0[44]) do
+		_rl0[50]:AddToggle("Player" .. Status.Key, { Text = Status.Text, Tooltip = Status.Tooltip, Default = Status.Default,
 			["Callback"] = function(Value)
 				PlayerConfig[Status.Key] = Value
 				if Value then
@@ -4171,55 +4104,55 @@ do
 			end
 		})
 	end
-	_rl0[54] = Pace(_rl0[9].Visuals:AddGroupbox({ Name = "Throwables", Side = "Right", IconName = "bomb" }))
-	_rl0[54]:AddToggle("ThrowableTimer", { Text = "Throwable Timer",
+	_rl0[51] = Pace(_rl0[10].Visuals:AddGroupbox({ Name = "Throwables", Side = "Right", IconName = "bomb" }))
+	_rl0[51]:AddToggle("ThrowableTimer", { Text = "Throwable Timer",
 		Tooltip = "Counts down how long a thrown explosive has before it goes off.", Default = false,
 		["Callback"] = function(Value)
 			ThrowableConfig.Timer = Value
 		end
 	})
-	_rl0[54]:AddToggle("ThrowableHandMortarTimer", { Text = "Hand Mortar Timer",
+	_rl0[51]:AddToggle("ThrowableHandMortarTimer", { Text = "Hand Mortar Timer",
 		Tooltip = "Counts down the fuse on the grenade lit inside the hand mortar.", Default = false,
 		["Callback"] = function(Value)
 			ThrowableConfig.MortarTimer = Value
 		end
 	})
-	_rl0[54]:AddToggle("ThrowableTrajectory", { Text = "Projectile Trajectory",
+	_rl0[51]:AddToggle("ThrowableTrajectory", { Text = "Projectile Trajectory",
 		Tooltip = "Shows the real arc of your grenade, tar bottle or hand mortar. On mobile it previews the camera aim the game actually uses.",
 		Default = false,
 		["Callback"] = function(Value)
 			ThrowableConfig.Trajectory = Value
 		end
 	})
-	_rl0[55] = Pace(_rl0[9].Misc:AddGroupbox({ Name = "Lighting", Side = "Left", IconName = "sun" }))
-	_rl0[55]:AddToggle("WorldFullbright", { Text = "Fullbright", Tooltip = "Lights up the whole map.", Default = false,
+	_rl0[52] = Pace(_rl0[10].Misc:AddGroupbox({ Name = "Lighting", Side = "Left", IconName = "sun" }))
+	_rl0[52]:AddToggle("WorldFullbright", { Text = "Fullbright", Tooltip = "Lights up the whole map.", Default = false,
 		["Callback"] = function(Value)
 			WorldConfig.Fullbright = Value
 			ApplyWorldLighting()
 		end
 	})
-	_rl0[55]:AddToggle("WorldNoFog", { Text = "No Fog", Tooltip = "Clears the fog so you can see further.", Default = false,
+	_rl0[52]:AddToggle("WorldNoFog", { Text = "No Fog", Tooltip = "Clears the fog so you can see further.", Default = false,
 		["Callback"] = function(Value)
 			WorldConfig.NoFog = Value
 			ApplyWorldLighting()
 		end
 	})
-	_rl0[62] = Pace(_rl0[9].Misc:AddGroupbox({ Name = "Character", Side = "Right", IconName = "user" }))
-	_rl0[62]:AddToggle("MiscNoFallDamage", { Text = "No Fall Damage", Tooltip = "Blocks the game's fall damage and landing stumble.",
+	_rl0[59] = Pace(_rl0[10].Misc:AddGroupbox({ Name = "Character", Side = "Right", IconName = "user" }))
+	_rl0[59]:AddToggle("MiscNoFallDamage", { Text = "No Fall Damage", Tooltip = "Blocks the game's fall damage and landing stumble.",
 		Default = false,
 		["Callback"] = function(Value)
 			MiscConfig.NoFallDamage = Value
 			ApplyCharacterGuards()
 		end
 	})
-	_rl0[62]:AddToggle("MiscAntiBrokenLegs", { Text = "Anti Broken Legs", Tooltip = "Blocks the broken-legs crawl state so you keep moving.",
+	_rl0[59]:AddToggle("MiscAntiBrokenLegs", { Text = "Anti Broken Legs", Tooltip = "Blocks the broken-legs crawl state so you keep moving.",
 		Default = false,
 		["Callback"] = function(Value)
 			MiscConfig.AntiBrokenLegs = Value
 			ApplyCharacterGuards()
 		end
 	})
-	_rl0[62]:AddToggle("MiscWaypoints", { Text = "Objective Waypoints", Tooltip = "Marks the current objective so you can find it.",
+	_rl0[59]:AddToggle("MiscWaypoints", { Text = "Objective Waypoints", Tooltip = "Marks the current objective so you can find it.",
 		Default = false,
 		["Callback"] = function(Value)
 			MiscConfig.Waypoints = Value
@@ -4230,71 +4163,71 @@ do
 			MiscConfig.WaypointColor = Value
 		end
 	})
-	_rl0[56] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Hitbox Expander", Side = "Left", IconName = "expand" }))
-	_rl0[56]:AddToggle("HitboxExpander", { Text = "Hitbox Expander", Tooltip = "Bigger hit area on your swings.", Default = false,
+	_rl0[53] = Pace(_rl0[10].Combat:AddGroupbox({ Name = "Hitbox Expander", Side = "Left", IconName = "expand" }))
+	_rl0[53]:AddToggle("HitboxExpander", { Text = "Hitbox Expander", Tooltip = "Bigger hit area on your swings.", Default = false,
 		["Callback"] = function(Value)
 			HitboxConfig.Enabled = Value
 			SyncHook()
 		end
 	})
-	_rl0[56]:AddSlider("HitboxExpanderSize", { AllowRightClickInput = true, Text = "Hitbox Expander Size",
+	_rl0[53]:AddSlider("HitboxExpanderSize", { AllowRightClickInput = true, Text = "Hitbox Expander Size",
 		Tooltip = "How much bigger that area is.", Default = 5, Min = 1, Max = 10, Rounding = 0,
 		["Callback"] = function(Value)
 			HitboxConfig.Size = Value
 		end
 	})
-	_rl0[56]:AddDropdown("HitboxExpanderPart", { Values = { "All", "Head", "Torso", "Legs", "HumanoidRootPart" }, Default = "All",
+	_rl0[53]:AddDropdown("HitboxExpanderPart", { Values = { "All", "Head", "Torso", "Legs", "HumanoidRootPart" }, Default = "All",
 		Text = "Hitbox Part", Tooltip = "Which parts get the bigger hit area.",
 		["Callback"] = function(Value)
 			HitboxConfig.Part = Value
 			InvalidateHitboxParts()
 		end
 	})
-	_rl0[56]:AddToggle("HitboxIgnoreBarrel", { Text = "Ignore Bombers/Barrel", Tooltip = "Skips bombers so you don't pop them.", Default = false,
+	_rl0[53]:AddToggle("HitboxIgnoreBarrel", { Text = "Ignore Bombers/Barrel", Tooltip = "Skips bombers so you don't pop them.", Default = false,
 		["Callback"] = function(Value)
 			HitboxConfig.IgnoreBarrel = Value
 			InvalidateHitboxParts()
 		end
 	})
-	_rl0[56]:AddToggle("HitboxShow", { Text = "Show Hitboxes", Tooltip = "Draws the hit area so you can see it.", Default = false,
+	_rl0[53]:AddToggle("HitboxShow", { Text = "Show Hitboxes", Tooltip = "Draws the hit area so you can see it.", Default = false,
 		["Callback"] = function(Value)
 			HitboxConfig.Show = Value
 		end
 	})
-	_rl0[56]:AddSlider("HitboxTransparency", { AllowRightClickInput = true, Text = "Hitbox Transparency",
+	_rl0[53]:AddSlider("HitboxTransparency", { AllowRightClickInput = true, Text = "Hitbox Transparency",
 		Tooltip = "How faded the hitboxes are. 90 is barely visible.", Default = 90, Min = 0, Max = 100,
 		Rounding = 0, Suffix = "%",
 		["Callback"] = function(Value)
 			HitboxConfig.Transparency = Value / 100
 		end
 	})
-	_rl0[57] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Firearms", Side = "Left", IconName = "crosshair" }))
-	_rl0[57]:AddToggle("SilentAim", { Text = "Silent Aim", Tooltip = "Shots go to the zombie in the circle instead of where you aim.",
+	_rl0[54] = Pace(_rl0[10].Combat:AddGroupbox({ Name = "Firearms", Side = "Left", IconName = "crosshair" }))
+	_rl0[54]:AddToggle("SilentAim", { Text = "Silent Aim", Tooltip = "Shots go to the zombie in the circle instead of where you aim.",
 		Default = false,
 		["Callback"] = function(Value)
 			AimConfig.Silent.Enabled = Value
 			SyncHook()
 		end
 	})
-	_rl0[57]:AddToggle("SilentAimShowFOV", { Text = "Show FOV", Tooltip = "Draws the silent aim circle.", Default = false,
+	_rl0[54]:AddToggle("SilentAimShowFOV", { Text = "Show FOV", Tooltip = "Draws the silent aim circle.", Default = false,
 		["Callback"] = function(Value)
 			AimConfig.Silent.ShowFOV = Value
 		end
 	})
-	_rl0[57]:AddToggle("SilentChams", { Text = "Chams on Target", Tooltip = "Highlights the zombie Silent Aim is currently locked onto.",
+	_rl0[54]:AddToggle("SilentChams", { Text = "Chams on Target", Tooltip = "Highlights the zombie Silent Aim is currently locked onto.",
 		Default = false,
 		["Callback"] = function(Value)
 			AimConfig.Silent.Chams = Value
 		end
 	})
-	_rl0[57]:AddSlider("SilentAimFOV", { AllowRightClickInput = true, Text = "FOV Size",
+	_rl0[54]:AddSlider("SilentAimFOV", { AllowRightClickInput = true, Text = "FOV Size",
 		Tooltip = "How far from your crosshair it will look. 360 covers the screen.", Default = 80, Min = 0,
 		Max = 360, Rounding = 0,
 		["Callback"] = function(Value)
 			AimConfig.Silent.FOV = Value
 		end
 	})
-	_rl0[57]:AddDropdown("SilentAimTypes", { Values = _rl0[36], Default = _rl0[36], Text = "Zombie Types",
+	_rl0[54]:AddDropdown("SilentAimTypes", { Values = _rl0[33], Default = _rl0[33], Text = "Zombie Types",
 		Tooltip = "Which zombies silent aim goes for. All targets every zombie.", Multi = true,
 		["Callback"] = function(Value)
 			local Types = {}
@@ -4304,33 +4237,33 @@ do
 			AimConfig.Silent.Types = Types
 		end
 	})
-	_rl0[57]:AddToggle("NoRecoil", { Text = "No Recoil", Tooltip = "Stops the camera kick after each shot.", Default = false,
+	_rl0[54]:AddToggle("NoRecoil", { Text = "No Recoil", Tooltip = "Stops the camera kick after each shot.", Default = false,
 		["Callback"] = function(Value)
-			_rl0[32].NoRecoil = Value
+			_rl0[29].NoRecoil = Value
 			SetNoRecoil(Value)
 		end
 	})
-	_rl0[58] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Melee", Side = "Right", IconName = "target" }))
-	_rl0[58]:AddToggle("MeleeAutoHeadshot", { Text = "Auto Headshot", Tooltip = "Turns your hits into headshots.", Default = false,
+	_rl0[55] = Pace(_rl0[10].Combat:AddGroupbox({ Name = "Melee", Side = "Right", IconName = "target" }))
+	_rl0[55]:AddToggle("MeleeAutoHeadshot", { Text = "Auto Headshot", Tooltip = "Turns your hits into headshots.", Default = false,
 		["Callback"] = function(Value)
 			MeleeConfig.AutoHeadshot = Value
 			SyncHook()
 		end
 	})
-	_rl0[58]:AddSlider("MeleeHeadshotChance", { AllowRightClickInput = true, Text = "Headshot Chance", Tooltip = "Odds a hit lands as a headshot.",
+	_rl0[55]:AddSlider("MeleeHeadshotChance", { AllowRightClickInput = true, Text = "Headshot Chance", Tooltip = "Odds a hit lands as a headshot.",
 		Default = 100, Min = 0, Max = 100, Rounding = 0, Suffix = "%",
 		["Callback"] = function(Value)
 			MeleeConfig.Chance = Value
 		end
 	})
-	_rl0[58]:AddToggle("MeleeSwingSpeedEnabled", { Text = "Swing Speed", Tooltip = "Turns the multiplier below on.", Default = false,
+	_rl0[55]:AddToggle("MeleeSwingSpeedEnabled", { Text = "Swing Speed", Tooltip = "Turns the multiplier below on.", Default = false,
 		["Callback"] = function(Value)
 			MeleeConfig.SwingSpeedEnabled = Value
 			ClearSwingBuffs()
 			ApplySwingSpeed()
 		end
 	})
-	_rl0[58]:AddSlider("MeleeSwingSpeed", { AllowRightClickInput = true, Text = "Swing Speed Multiplier",
+	_rl0[55]:AddSlider("MeleeSwingSpeed", { AllowRightClickInput = true, Text = "Swing Speed Multiplier",
 		Tooltip = "How many times faster you swing.", Default = 1, Min = 1, Max = 5, Rounding = 1,
 		Suffix = "x",
 		["Callback"] = function(Value)
@@ -4339,46 +4272,46 @@ do
 			ApplySwingSpeed()
 		end
 	})
-	_rl0[59] = Pace(_rl0[9].Combat:AddGroupbox({ Name = "Legit", Side = "Right", IconName = "chevron-up" }))
-	_rl0[59]:AddToggle("AutoJumpOnAttack", { Text = "Auto Jump On Attack",
+	_rl0[56] = Pace(_rl0[10].Combat:AddGroupbox({ Name = "Legit", Side = "Right", IconName = "chevron-up" }))
+	_rl0[56]:AddToggle("AutoJumpOnAttack", { Text = "Auto Jump On Attack",
 		Tooltip = "Jumps with the game jump power whenever you swing your melee weapon.", Default = false,
 		["Callback"] = function(Value)
-			_rl0[31].AutoJump = Value
+			_rl0[28].AutoJump = Value
 		end
 	})
-	_rl0[60] = Pace(_rl0[9].Class:AddGroupbox({ Name = "Sapper", Side = "Left", IconName = "hammer" }))
-	_rl0[60]:AddToggle("AutoBuild", { Text = "Auto Build", Tooltip = "Automatically repairs damaged sapper buildings near you.",
+	_rl0[57] = Pace(_rl0[10].Class:AddGroupbox({ Name = "Sapper", Side = "Left", IconName = "hammer" }))
+	_rl0[57]:AddToggle("AutoBuild", { Text = "Auto Build", Tooltip = "Automatically repairs damaged sapper buildings near you.",
 		Default = false,
 		["Callback"] = function(Value)
 			ClassConfig.AutoBuild = Value
 		end
 	})
-	_rl0[60]:AddDropdown("AutoBuildPriority", { Values = { "Closest Building", "Lowest Health Building" }, Default = "Closest Building",
+	_rl0[57]:AddDropdown("AutoBuildPriority", { Values = { "Closest Building", "Lowest Health Building" }, Default = "Closest Building",
 		Text = "Priority", Tooltip = "Which damaged building gets repaired first.",
 		["Callback"] = function(Value)
 			ClassConfig.BuildPriority = Value
 		end
 	})
-	_rl0[60]:AddDivider()
-	_rl0[60]:AddToggle("ShoveExpander", { Text = "Shove Hitbox Expander", Tooltip = "Makes the shove hit area bigger.", Default = false,
+	_rl0[57]:AddDivider()
+	_rl0[57]:AddToggle("ShoveExpander", { Text = "Shove Hitbox Expander", Tooltip = "Makes the shove hit area bigger.", Default = false,
 		["Callback"] = function(Value)
 			ClassConfig.ShoveExpander = Value
 			SyncHook()
 		end
 	})
-	_rl0[60]:AddSlider("ShoveRadius", { AllowRightClickInput = true, Text = "Shove Hitbox Size", Tooltip = "How far the shove can reach.",
+	_rl0[57]:AddSlider("ShoveRadius", { AllowRightClickInput = true, Text = "Shove Hitbox Size", Tooltip = "How far the shove can reach.",
 		Default = 5, Min = 1, Max = 15, Rounding = 0, Suffix = "st",
 		["Callback"] = function(Value)
 			ClassConfig.ShoveRadius = Value
 		end
 	})
-	_rl0[60]:AddToggle("ShoveShow", { Text = "Show Shove Hitbox", Tooltip = "Draws the shove hit area so you can see it.",
+	_rl0[57]:AddToggle("ShoveShow", { Text = "Show Shove Hitbox", Tooltip = "Draws the shove hit area so you can see it.",
 		Default = false,
 		["Callback"] = function(Value)
 			ClassConfig.ShoveShow = Value
 		end
 	})
-	_rl0[60]:AddSlider("ShoveTransparency", { AllowRightClickInput = true, Text = "Shove Hitbox Transparency",
+	_rl0[57]:AddSlider("ShoveTransparency", { AllowRightClickInput = true, Text = "Shove Hitbox Transparency",
 		Tooltip = "How faded the hitbox is. 90 is barely visible.", Default = 95, Min = 0, Max = 100,
 		Rounding = 0, Suffix = "%",
 		["Callback"] = function(Value)
@@ -4392,8 +4325,8 @@ do
 			SurgeonConfig.Box = Style ~= "Chams"
 			SurgeonConfig.BoxStyle = Style == "Corner Box" and "Corner" or Style
 		end
-		_rl0[61] = Pace(_rl0[9].Class:AddGroupbox({ Name = "Surgeon", Side = "Left", IconName = "heart" }))
-		_rl0[61]:AddToggle("SurgeonLowHealth", { Text = "Low Health Players", Tooltip = "Highlights teammates below the health threshold.",
+		_rl0[58] = Pace(_rl0[10].Class:AddGroupbox({ Name = "Surgeon", Side = "Left", IconName = "heart" }))
+		_rl0[58]:AddToggle("SurgeonLowHealth", { Text = "Low Health Players", Tooltip = "Highlights teammates below the health threshold.",
 			Default = false,
 			["Callback"] = function(Value)
 				SurgeonConfig.Enabled = Value
@@ -4405,21 +4338,21 @@ do
 				SurgeonConfig.ChamsColor = Value
 			end
 		})
-		_rl0[61]:AddSlider("SurgeonThreshold", { AllowRightClickInput = true, Text = "Low Health Threshold",
+		_rl0[58]:AddSlider("SurgeonThreshold", { AllowRightClickInput = true, Text = "Low Health Threshold",
 			Tooltip = "Players at or below this health percentage get highlighted.", Default = 30, Min = 5,
 			Max = 100, Rounding = 0, Suffix = "%",
 			["Callback"] = function(Value)
 				SurgeonConfig.Threshold = Value
 			end
 		})
-		_rl0[61]:AddDropdown("SurgeonStyle", { Values = { "Chams", "Box", "Corner Box", "Filled Box" }, Default = "Box", Text = "Highlight Style",
+		_rl0[58]:AddDropdown("SurgeonStyle", { Values = { "Chams", "Box", "Corner Box", "Filled Box" }, Default = "Box", Text = "Highlight Style",
 			Tooltip = "How low health teammates are drawn.",
 			["Callback"] = function(Value)
 				ApplySurgeonStyle(Value)
 			end
 		})
 	end
-	_rl0[61]:AddToggle("SurgeonSupplies", { Text = "Supplies ESP", Tooltip = "Highlights dropped medical supplies on the ground.",
+	_rl0[58]:AddToggle("SurgeonSupplies", { Text = "Supplies ESP", Tooltip = "Highlights dropped medical supplies on the ground.",
 		Default = false,
 		["Callback"] = function(Value)
 			SurgeonConfig.SuppliesESP = Value
@@ -4429,8 +4362,8 @@ do
 			SurgeonConfig.SuppliesColor = Value
 		end
 	})
-	_rl0[61]:AddDivider()
-	_rl0[61]:AddToggle("SurgeonAutoHeal", { Text = "Auto Heal", Tooltip = "Walks to the most hurt teammate and heals them.", Default = false,
+	_rl0[58]:AddDivider()
+	_rl0[58]:AddToggle("SurgeonAutoHeal", { Text = "Auto Heal", Tooltip = "Walks to the most hurt teammate and heals them.", Default = false,
 		["Callback"] = function(Value)
 			SurgeonConfig.AutoHeal = Value
 			SurgeonState.Target = nil
@@ -4447,26 +4380,26 @@ do
 			end
 		end
 	})
-	_rl0[61]:AddDropdown("SurgeonMode", { Values = { "Legit", "Blatant" }, Default = "Legit", Text = "Mode",
+	_rl0[58]:AddDropdown("SurgeonMode", { Values = { "Legit", "Blatant" }, Default = "Legit", Text = "Mode",
 		Tooltip = "Legit walks with pathfinding. Blatant flies straight to them.",
 		["Callback"] = function(Value)
 			SurgeonConfig.Mode = Value
 		end
 	})
-	_rl0[61]:AddSlider("SurgeonDistance", { AllowRightClickInput = true, Text = "Max Distance",
+	_rl0[58]:AddSlider("SurgeonDistance", { AllowRightClickInput = true, Text = "Max Distance",
 		Tooltip = "How far away a teammate can be before it stops looking.", Default = 40, Min = 10,
 		Max = 150, Rounding = 0, Suffix = "st",
 		["Callback"] = function(Value)
 			SurgeonConfig.MaxDistance = Value
 		end
 	})
-	_rl0[61]:AddToggle("SurgeonAvoid", { Text = "Avoid Zombies", Tooltip = "Keeps the path out of zombie and bomber blast range.",
+	_rl0[58]:AddToggle("SurgeonAvoid", { Text = "Avoid Zombies", Tooltip = "Keeps the path out of zombie and bomber blast range.",
 		Default = true,
 		["Callback"] = function(Value)
 			SurgeonConfig.Avoid = Value
 		end
 	})
-	MusicianGroup = Pace(_rl0[9].Class:AddGroupbox({ Name = "Musician", Side = "Right", IconName = "music" }))
+	MusicianGroup = Pace(_rl0[10].Class:AddGroupbox({ Name = "Musician", Side = "Right", IconName = "music" }))
 	MusicianGroup:AddToggle("AutoPlayInstrument", { Text = "Auto Play Fife/Drum",
 		Tooltip = "Hits every beat for a perfect score once you start a song yourself.", Default = false,
 		["Callback"] = function(Value)
@@ -4477,7 +4410,7 @@ do
 		end
 	})
 end
-local MenuSettingsGroup = Pace(_rl0[9].Settings:AddGroupbox({ Side = "Left", Name = "Menu", IconName = "wrench" }))
+local MenuSettingsGroup = Pace(_rl0[10].Settings:AddGroupbox({ Side = "Left", Name = "Menu", IconName = "wrench" }))
 MenuSettingsGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu",
 	Tooltip = "Shows the keybind list on screen.",
 	["Callback"] = function(Value)
@@ -4495,9 +4428,9 @@ MenuSettingsGroup:AddToggle("ShowCustomCursor", { Text = "Custom Cursor", Toolti
 	end
 })
 MenuSettingsGroup:AddToggle("AlwaysOnTop", { Text = "Always On Top", Tooltip = "Keeps the menu above other windows.",
-	Default = _rl0[8].AlwaysOnTop,
+	Default = _rl0[9].AlwaysOnTop,
 	["Callback"] = function(Value)
-		_rl0[8]:SetAlwaysOnTop(Value)
+		_rl0[9]:SetAlwaysOnTop(Value)
 	end
 })
 MenuSettingsGroup:AddDropdown("NotificationSide", { Values = { "Left", "Right" }, Default = "Right", Text = "Notification Side",
@@ -4517,7 +4450,7 @@ MenuSettingsGroup:AddDropdown("DPIDropdown", { Values = { "50%", "75%", "100%", 
 MenuSettingsGroup:AddSlider("UICornerSlider", { AllowRightClickInput = true, Text = "Corner Radius", Tooltip = "How round the menu corners are.",
 	Default = Library.CornerRadius, Min = 0, Max = 20, Rounding = 0,
 	["Callback"] = function(Value)
-		_rl0[8]:SetCornerRadius(Value)
+		_rl0[9]:SetCornerRadius(Value)
 	end
 })
 MenuSettingsGroup:AddDivider()
@@ -4534,13 +4467,13 @@ _rl0[4]:IgnoreThemeSettings()
 _rl0[4]:SetIgnoreIndexes({ "MenuKeybind" })
 _rl0[4]:SetFolder("Umber/Default")
 Breathe()
-_rl0[4]:BuildConfigSection(_rl0[9].Settings)
+_rl0[4]:BuildConfigSection(_rl0[10].Settings)
 Breathe()
-_rl0[3]:ApplyToTab(_rl0[9].Settings)
+_rl0[3]:ApplyToTab(_rl0[10].Settings)
 Breathe()
-_rl0[22] = true
+_rl0[20] = true
 _rl0[4]:LoadAutoloadConfig()
-_rl0[22] = false
+_rl0[20] = false
 task.spawn(function()
 	if not FsReady() then
 		return
